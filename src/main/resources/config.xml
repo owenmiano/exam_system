@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><configuration>
+    <database>
+        <type>mssql</type>
+        <name>exam_system</name>
+        <host>172.20.94.24</host>
+        <port>1433</port>
+        <username ENCRYPTED="yes">BVyeRs/tpxJ3S2KEq9C+3g==</username>
+        <password ENCRYPTED="yes">gf+WU1r+azfuGIJ27IhyLg==</password>
+    </database>
+</configuration>
