@@ -16,12 +16,10 @@ public class Main {
             DatabaseConnectionManager dbManager = new DatabaseConnectionManager(configFile);
 
             try (Connection connection = dbManager.getConnection()) {
-                System.out.println("Connected successfully");
-
-                // Call createTables after establishing the connection
+                System.out.println("Database Connected successfully");
                 dbManager.createTables(connection);
-                allPupilsScores(connection);
-            } // The connection will be closed automatically here due to try-with-resources
+                modifyExamSchedule(connection);
+            }
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -33,18 +31,18 @@ public class Main {
     }
 
     private static File getConfigFile() {
-        Path resourcesPath = Paths.get("src", "main", "resources", "config.xml");
-        if (!Files.exists(resourcesPath)) {
-            throw new IllegalArgumentException("Configuration file not found at " + resourcesPath);
+        Path folderPath = Paths.get("config", "config.xml");
+        if (!Files.exists(folderPath)) {
+            throw new IllegalArgumentException("Configuration file not found at " + folderPath);
         }
-
-        return resourcesPath.toFile();
+        return folderPath.toFile();
     }
+
 
     //Class section Start
     private static void addClass(Connection connection) {
         HashMap<String, Object> classData = new HashMap<>();
-        classData.put("class_name", "class 4 ");
+        classData.put("class_name", "class 4");
 
         ClassController.createClass(connection, classData);
 
@@ -200,11 +198,8 @@ private static void addSubject(Connection connection) {
 private static void addExam(Connection connection) {
     HashMap<String, Object> examData = new HashMap<>();
     examData.put("exam_name", "MidTerm Exam");
-    examData.put("subject_id", 3);
-    examData.put("class_id", "");
-    examData.put("teacher_id", "");
-    examData.put("exam_date", "");
-    examData.put("exam_duration", "");
+    examData.put("class_id", 2);
+
 
     ExamController.createExam(connection, examData);
 }
@@ -217,7 +212,7 @@ private static void addExam(Connection connection) {
         ExamController.findExam(connection, examData,columns);
 
     }
-    private static void renameExam(Connection connection) {
+    private static void modifyExam(Connection connection) {
         HashMap<String, Object> examData = new HashMap<>();
         examData.put("exam_name", "Sciencee");
 
@@ -226,6 +221,33 @@ private static void addExam(Connection connection) {
 
     }
 //Exam section end
+
+    //Exam Schedule section Start
+    private static void addExamSchedule(Connection connection) {
+        HashMap<String, Object> examScheduleData = new HashMap<>();
+        examScheduleData.put("exam_id",1 );
+        examScheduleData.put("subject_id", 3);
+        examScheduleData.put("teacher_id", 3);
+        examScheduleData.put("exam_date", "");
+        examScheduleData.put("exam_duration", "");
+
+        ExamController.createExamSchedule(connection, examScheduleData);
+    }
+    private static void selectExamSchedule(Connection connection) {
+        int examSubjectId = 1;
+
+        ExamController.findExamSchedule(connection, examSubjectId);
+
+    }
+    private static void modifyExamSchedule(Connection connection) {
+        HashMap<String, Object> examScheduleData = new HashMap<>();
+        examScheduleData.put("exam_duration", 180);
+
+        int examSubjectId = 1;
+        ExamController.updateExamSchedule(connection, examScheduleData,examSubjectId);
+
+    }
+//Exam schedule section end
 
 
 
@@ -308,43 +330,38 @@ private static void addAnswer(Connection connection) {
 
 
 //Report Section
+    //Generate a report on the answers provided by a pupil for an exam and their percentage score in that exam.
 private static void pupilAnswers(Connection connection) throws SQLException {
-    // Define the columns to fetch from the joined tables
 
     int pupilId = 1; // Example pupilId
     int examSubject = 2; // Example examId
 
-    // Fetch the report data
     ExamReport.generatePupilsAnswers(connection, pupilId, examSubject);
 
  }
+
+ //Display all the exams set by a teacher
     private static void displayExams(Connection connection) throws SQLException {
 
         int teacherId = 1;
 
-        // Fetch the report data
         ExamReport.generateExamsByTeacher(connection, teacherId);
-
-        // Print or process the report data
     }
 
+    //Generate a report on the top 5 pupils with the highest scores in a certain exam.
     private static void topFivePupils(Connection connection) throws SQLException {
 
         int examSubject = 1;
 
-        // Fetch the report data
         ExamReport.generateTopPupilsByScore(connection, examSubject);
-
-        // Print or process the report data
     }
+
+    //Generate a report sheet of the scores for all pupils in each of the exams done and rank them from the highest average score to lowest.
     private static void allPupilsScores(Connection connection) throws SQLException {
 
         int examId = 1;
 
-        // Fetch the report data
         ExamReport.generatePupilScoreReport(connection, examId);
-
-        // Print or process the report data
     }
 }
 

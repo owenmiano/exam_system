@@ -12,7 +12,7 @@ import org.mindrot.jbcrypt.BCrypt;
 
 public class PupilController {
     private static boolean isValidPhoneNumber(String phoneNumber) {
-        String phoneNumberRegex = "^\\d{10}$"; // Regular expression for exactly 10 digits
+        String phoneNumberRegex = "^\\d{10}$";
         return phoneNumber != null && phoneNumber.matches(phoneNumberRegex);
     }
     public static void findPupil(Connection connection, HashMap<String, Object> pupilData, String[] columns) {
@@ -91,7 +91,7 @@ public class PupilController {
 
             JsonObject result = GenericQueries.update(connection, "pupils", pupilData, whereClause,new Object[]{pupilId});
 
-            // Optionally handle the result
+
             if (result.get("success").getAsBoolean()) {
                 System.out.println("Pupil updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
             } else {

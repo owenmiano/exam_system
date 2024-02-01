@@ -166,7 +166,7 @@ public class DatabaseConnectionManager {
         }
     }
 
-    // Implement these methods to return the actual SQL commands for each database type
+    // actual SQL commands for each database type
     private String[] getMySQLTableCommands() {
         return new String[] {
                 "CREATE TABLE IF NOT EXISTS class (" +

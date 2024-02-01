@@ -45,19 +45,16 @@ public class QuestionController {
             System.out.println("Question data is missing or incomplete.");
             return;
         }
-        // Check if className is null or empty
         if (!questionData.containsKey("question_no") || questionData.get("question_no") == null) {
             System.out.println("Question number is missing.");
             return;
         }
 
-        // Check if description is empty
         if (!questionData.containsKey("description") || questionData.get("description") == null || questionData.get("description").toString().trim().isEmpty()) {
             System.out.println("Description cannot be empty.");
             return;
         }
 
-        // Check if marks is empty
         if (!questionData.containsKey("marks") || questionData.get("marks") == null) {
             System.out.println("Marks is missing.");
             return;
@@ -70,7 +67,7 @@ public class QuestionController {
         if (isInserted) {
             System.out.println("Question added successfully");
         } else {
-            System.out.println("Failed to add class");
+            System.out.println("Failed to add question");
         }
     }
     public static void updateQuestion(Connection connection, HashMap<String, Object> questionData, String questionIdString) {

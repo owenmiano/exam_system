@@ -19,11 +19,11 @@ public class TeacherController {
     }
 
     private static boolean isValidIDNumber(String idNumber) {
-        String idNumberRegex = "^\\d{8}$"; // Regular expression for exactly 8 digits
+        String idNumberRegex = "^\\d{8}$";
         return idNumber != null && idNumber.matches(idNumberRegex);
     }
     private static boolean isValidPhoneNumber(String phoneNumber) {
-        String phoneNumberRegex = "^\\d{10}$"; // Regular expression for exactly 10 digits
+        String phoneNumberRegex = "^\\d{10}$";
         return phoneNumber != null && phoneNumber.matches(phoneNumberRegex);
     }
 
@@ -74,7 +74,6 @@ public class TeacherController {
             String idNumber = teacherData.get("id_number") != null ? teacherData.get("id_number").toString() : "";
             String phone = teacherData.get("phone") != null ? teacherData.get("phone").toString() : "";
 
-            // Validate email, ID number, and phone
             if (!isValidEmail(emailAddress)) {
                 System.out.println("Invalid email address.");
                 return;
@@ -89,7 +88,7 @@ public class TeacherController {
                 System.out.println("Invalid phone number.");
                 return;
             }
-            // Insert the data into the database
+
             boolean isInserted = GenericQueries.insertData(connection, "teachers", teacherData);
 
             if (isInserted) {
@@ -116,10 +115,8 @@ public class TeacherController {
             int teacherId = Integer.parseInt(teacherIdString);
             String whereClause = "teacher_id = ?";
 
-            // Call the updateWithJoin method with a null joinClause
             JsonObject result = GenericQueries.update(connection, "teachers", teacherData, whereClause,new Object[]{teacherId});
 
-            // Optionally handle the result
             if (result.get("success").getAsBoolean()) {
                 System.out.println("Teacher updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
             } else {

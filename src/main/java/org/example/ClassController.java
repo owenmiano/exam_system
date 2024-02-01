@@ -64,19 +64,15 @@ public static void createClass(Connection connection, HashMap<String, Object> cl
 
     public static void updateClass(Connection connection, HashMap<String, Object> classData, String classIdString) {
         try {
-            // Check if classData is not null or empty
             if (classData == null || classData.isEmpty()) {
                 System.out.println("Class data is missing or empty.");
                 return;
             }
             int classId = Integer.parseInt(classIdString);
-            // WHERE clause to identify the specific class to update
-            String whereClause = "class_id = ?"; // Assuming the identifier column is 'class_id'
+            String whereClause = "class_id = ?";
 
-            // Call the updateWithJoin method with a null joinClause
             JsonObject result = GenericQueries.update(connection, "class", classData, whereClause,new Object[]{classId});
 
-            // Optionally handle the result
             if (result.get("success").getAsBoolean()) {
                 System.out.println("Class updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
             } else {

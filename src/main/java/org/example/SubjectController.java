@@ -43,7 +43,6 @@ public class SubjectController {
             System.out.println("Subject data is missing or incomplete.");
             return;
         }
-        // Check if className is null or empty
         String className = subjectData.get("subject_name").toString() ;
 
         if (className.trim().isEmpty()) {
@@ -63,19 +62,16 @@ public class SubjectController {
 
     public static void updateSubject(Connection connection, HashMap<String, Object> subjectData, String subjectIdString) {
         try {
-            // Check if classData is not null or empty
             if (subjectData == null || subjectData.isEmpty()) {
                 System.out.println("Subject data is missing or empty.");
                 return;
             }
             int subjectId = Integer.parseInt(subjectIdString);
-            // WHERE clause to identify the specific class to update
-            String whereClause = "subject_id = ?"; // Assuming the identifier column is 'class_id'
+            String whereClause = "subject_id = ?";
 
-            // Call the updateWithJoin method with a null joinClause
+
             JsonObject result = GenericQueries.update(connection, "subject", subjectData, whereClause,new Object[]{subjectId});
 
-            // Optionally handle the result
             if (result.get("success").getAsBoolean()) {
                 System.out.println("Subject updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
             } else {
