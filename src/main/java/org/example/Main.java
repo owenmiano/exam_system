@@ -18,7 +18,7 @@ public class Main {
             try (Connection connection = dbManager.getConnection()) {
                 System.out.println("Database Connected successfully");
                 dbManager.createTables(connection);
-                modifyExamSchedule(connection);
+                allPupilsScores(connection);
             }
 
         } catch (SQLException e) {

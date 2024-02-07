@@ -51,7 +51,6 @@ public class GenericQueries {
             for (Object param : params) {
                 pstmt.setObject(index++, param);
             }
-
             try (ResultSet rs = pstmt.executeQuery()) {
                 ResultSetMetaData metaData = rs.getMetaData();
                 int columnCount = metaData.getColumnCount();
@@ -107,16 +106,112 @@ public class GenericQueries {
         return querySelect(conn, "SELECT " + columnList + " FROM " + table + " WHERE " + where + " GROUP BY " + groupBy, params);
     }
 
-    // Select with LIMIT
-    public static JsonArray select(Connection conn, String table, int limit) throws SQLException {
-        return querySelect(conn, "SELECT * FROM " + table + " LIMIT " + limit);
+    // Select with LIMIT and OFFSET
+    public static JsonArray select(Connection conn, String table, int limit, int offset) throws SQLException {
+        return querySelect(conn, "SELECT * FROM " + table + " LIMIT " + limit + " OFFSET " + offset);
     }
 
+    //select with join
+    public static JsonArray select(Connection conn, String baseTable, String[][] joins, String[] columns) throws SQLException {
+        // Construct the SELECT clause
+        String columnList = columns.length > 0 ? String.join(", ", columns) : "*";
+
+        // Begin constructing the JOIN clause(s)
+        StringBuilder queryBuilder = new StringBuilder("SELECT " + columnList + " FROM " + baseTable);
+        for (String[] join : joins) {
+            if (join.length == 3) {
+                queryBuilder.append(" ")
+                        .append(join[0])
+                        .append(" JOIN ")
+                        .append(join[1])
+                        .append(" ON ")
+                        .append(join[2]);
+            } else {
+                throw new IllegalArgumentException("Each join must include exactly three elements: join type, join table, and join condition.");
+            }
+        }
+
+        // Call the existing querySelect method to execute the constructed query
+        return querySelect(conn, queryBuilder.toString());
+    }
+
+    // Select with JOIN also with where
+    public static JsonArray select(Connection conn, String baseTable, String[][] joins, String[] columns, String whereClause,String groupByClause, Object... params) throws SQLException {
+        // Construct the SELECT clause
+        String columnList = columns.length > 0 ? String.join(", ", columns) : "*";
+
+        // Begin constructing the JOIN clause(s)
+        StringBuilder queryBuilder = new StringBuilder("SELECT " + columnList + " FROM " + baseTable);
+        for (String[] join : joins) {
+            if (join.length == 3) { // Ensure each join information array contains exactly three elements
+                queryBuilder.append(" ")
+                        .append(join[0]) // Join Type (e.g., "INNER JOIN")
+                        .append(" JOIN ")
+                        .append(join[1]) // Join Table (e.g., "exam_subjects es")
+                        .append(" ON ")
+                        .append(join[2]); // Join Condition (e.g., "e.exam_id = es.exam_id")
+            } else {
+                throw new IllegalArgumentException("Each join must include exactly three elements: join type, join table, and join condition.");
+            }
+        }
+
+        // Add the WHERE clause if it's provided
+        if (!whereClause.isEmpty()) {
+            queryBuilder.append(" WHERE ").append(whereClause);
+        }
+        if (groupByClause != null && !groupByClause.isEmpty()) {
+            queryBuilder.append(" GROUP BY ").append(groupByClause);
+        }
+        // Execute the querySelect method, passing the constructed query and parameters for the WHERE clause
+        return querySelect(conn, queryBuilder.toString(), params);
+    }
+
+    public static JsonArray select(Connection conn, String baseTable, String[][] joins, String[] columns, String whereClause, Object... params) throws SQLException {
+        // Construct the SELECT clause
+        String columnList = columns.length > 0 ? String.join(", ", columns) : "*";
+
+        // Begin constructing the JOIN clause(s)
+        StringBuilder queryBuilder = new StringBuilder("SELECT " + columnList + " FROM " + baseTable);
+        for (String[] join : joins) {
+            if (join.length == 3) { // Ensure each join information array contains exactly three elements
+                queryBuilder.append(" ")
+                        .append(join[0]) // Join Type (e.g., "INNER JOIN")
+                        .append(" JOIN ")
+                        .append(join[1]) // Join Table (e.g., "exam_subjects es")
+                        .append(" ON ")
+                        .append(join[2]); // Join Condition (e.g., "e.exam_id = es.exam_id")
+            } else {
+                throw new IllegalArgumentException("Each join must include exactly three elements: join type, join table, and join condition.");
+            }
+        }
+
+        // Add the WHERE clause if it's provided
+        if (!whereClause.isEmpty()) {
+            queryBuilder.append(" WHERE ").append(whereClause);
+        }
+
+        // Execute the querySelect method, passing the constructed query and parameters for the WHERE clause
+        return querySelect(conn, queryBuilder.toString(), params);
+    }
+
+
     // Combination of WHERE, GROUP BY, ORDER BY, specific columns, and LIMIT
-    public static JsonArray select(Connection conn, String table, String[] columns, String where, String groupBy, String orderBy, Integer limit, Object... params) throws SQLException {
+    public static JsonArray select(Connection conn, String baseTable, String[][] joins, String[] columns, String where, String groupBy, String orderBy, Integer limit, Integer offset, Object... params) throws SQLException {
         String columnList = String.join(", ", columns);
         StringJoiner query = new StringJoiner(" ");
-        query.add("SELECT").add(columnList).add("FROM").add(table);
+        query.add("SELECT").add(columnList).add("FROM").add(baseTable);
+
+        for (String[] join : joins) {
+            if (join.length == 3) { // Ensure each join information array contains exactly three elements
+                query.add(join[0]) // Join Type (e.g., "INNER JOIN")
+                        .add("JOIN")
+                        .add(join[1]) // Join Table (e.g., "exam_subjects es")
+                        .add("ON")
+                        .add(join[2]);
+            } else {
+                throw new IllegalArgumentException("Each join must include exactly three elements: join type, join table, and join condition.");
+            }
+        }
 
         if (where != null && !where.isEmpty()) {
             query.add("WHERE").add(where);
@@ -134,8 +229,13 @@ public class GenericQueries {
             query.add("LIMIT").add(limit.toString());
         }
 
+        if (offset != null) {
+            query.add("OFFSET").add(offset.toString());
+        }
+
         return querySelect(conn, query.toString(), params);
     }
+
 
     // Global update method
     public static JsonObject update(Connection conn, String table, Map<String, Object> updates, String where, Object... whereParams) throws SQLException {

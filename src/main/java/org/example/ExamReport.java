@@ -27,7 +27,6 @@ public class ExamReport {
     public static void generateExamsByTeacher(Connection connection, int teacherId) {
         try {
             String[] columns = {
-                    "e.exam_id",
                     "e.exam_name",
                     "es.exam_date",
                     "t.teacher_name",
@@ -35,18 +34,21 @@ public class ExamReport {
                     "cl.class_name"
             };
 
-            String table = "exam e " +
-                    "JOIN exam_subjects es ON e.exam_id = es.exam_id " +
-                    "JOIN teachers t ON es.teacher_id = t.teacher_id " +
-                    "JOIN subject s ON es.subject_id = s.subject_id " +
-                    "JOIN class cl ON e.class_id = cl.class_id";
+            // Adjust the joins to the new format expected by the updated select method
+            String[][] joins = {
+                    {"INNER", "exam_subjects es", "e.exam_id = es.exam_id"},
+                    {"INNER", "teachers t", "es.teacher_id = t.teacher_id"},
+                    {"INNER", "subject s", "es.subject_id = s.subject_id"},
+                    {"INNER", "class cl", "e.class_id = cl.class_id"}
+            };
 
             String whereClause = "t.teacher_id = ?";
-
             Object[] values = new Object[]{teacherId};
 
-            JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, values);
+            // Execute the updated select method with multiple joins and a parameterized where clause
+            JsonArray jsonArrayResult = GenericQueries.select(connection, "exam e", joins, columns, whereClause, values);
 
+            // Convert the result to JSON String and print
             String jsonResult = jsonArrayResult.toString();
             System.out.println(jsonResult);
 
@@ -57,14 +59,18 @@ public class ExamReport {
     }
 
 
-
     public static void generatePupilsAnswers(Connection connection, int pupilId, int examSubject) {
-        JsonArray answersReport = new JsonArray();
-        Gson gson = new Gson();
-
-       String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
-
+        String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
         try {
+            String isCorrectColumn = dbType.equalsIgnoreCase("postgresql") ?
+                    "CASE WHEN c.correct = true THEN 'correct' ELSE 'incorrect' END AS is_correct" :
+                    "CASE WHEN c.correct = 1 THEN 'correct' ELSE 'incorrect' END AS is_correct";
+
+            String scoreColumn = dbType.equalsIgnoreCase("postgresql") ?
+                    "CASE WHEN c.correct = true THEN q.marks ELSE 0 END AS score" :
+                    "CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END AS score";
+
+            // Construct the columns array dynamically with the adjusted 'is_correct' and 'score' columns
             String[] columns = {
                     "p.pupil_name AS pupil",
                     "p.reg_no AS registration_number",
@@ -74,34 +80,29 @@ public class ExamReport {
                     "q.question_no",
                     "q.description AS question",
                     "c.option_value AS chosen_answer",
-                    dbType.equalsIgnoreCase("postgresql") ?
-                            "CASE WHEN c.correct = true THEN 'correct' ELSE 'incorrect' END AS is_correct" :
-                            "CASE WHEN c.correct = 1 THEN 'correct' ELSE 'incorrect' END AS is_correct",
-                    "q.marks",
-                    dbType.equalsIgnoreCase("postgresql") ?
-                            "CASE WHEN c.correct = true THEN q.marks ELSE 0 END AS score" :
-                            "CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END AS score"
+                    isCorrectColumn, // Use the dynamically determined column definition
+                    scoreColumn // Use the dynamically determined column definition
             };
 
-            String table = "answers a " +
-                    "JOIN choices c ON a.choices_id = c.choices_id " +
-                    "JOIN questions q ON a.questions_id = q.questions_id " +
-                    "JOIN exam_subjects es ON q.exam_subject_id = es.exam_subject_id " +
-                    "JOIN exam e ON es.exam_id = e.exam_id " +
-                    "JOIN subject s ON es.subject_id = s.subject_id " +
-                    "JOIN pupils p ON a.pupils_id = p.pupils_id " +
-                    "JOIN class cl ON p.class_id = cl.class_id";
+            String[][] joins = {
+                    {"INNER", "choices c", "a.choices_id = c.choices_id"},
+                    {"INNER", "questions q", "a.questions_id = q.questions_id"},
+                    {"INNER", "exam_subjects es", "q.exam_subject_id = es.exam_subject_id"},
+                    {"INNER", "exam e", "es.exam_id = e.exam_id"},
+                    {"INNER", "subject s", "es.subject_id = s.subject_id"},
+                    {"INNER", "pupils p", "a.pupils_id = p.pupils_id"},
+                    {"INNER", "class cl", "p.class_id = cl.class_id"}
+            };
 
-            String whereClause = "a.pupils_id = ? AND es.exam_subject_id = ?";
-
+            String whereClause = "p.pupils_id = ? AND es.exam_subject_id = ?";
             Object[] params = new Object[]{pupilId, examSubject};
-
-            answersReport = GenericQueries.select(connection, table, columns, whereClause, params);
+            // Execute the updated select method with multiple joins and a parameterized where clause
+            JsonArray answersReport = GenericQueries.select(connection, "answers a", joins, columns, whereClause, params);
 
             int totalScore = 0;
             for (int i = 0; i < answersReport.size(); i++) {
                 JsonObject answer = answersReport.get(i).getAsJsonObject();
-                int score = answer.get("score").getAsInt();
+                int score = answer.has("score") ? answer.get("score").getAsInt() : 0;
                 totalScore += score;
             }
 
@@ -109,43 +110,49 @@ public class ExamReport {
             totalScoreObject.addProperty("total_score", totalScore);
             answersReport.add(totalScoreObject);
 
+            Gson gson = new Gson();
             String jsonString = gson.toJson(answersReport);
             System.out.println(jsonString);
 
         } catch (SQLException e) {
+            System.out.println("An error occurred: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
+
     public static void generateTopPupilsByScore(Connection connection, int examSubject) {
-        JsonArray topPupilsReport = new JsonArray();
-        Gson gson = new Gson();
-        String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
         try {
+            String dbType = DatabaseConnectionManager.DatabaseConfig.getDbType();
+
+            String isCorrectColumn = dbType.equalsIgnoreCase("postgresql") ?
+                    "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS total_score" :
+                    "SUM(CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END) AS total_score";
+
             String[] columns = {
                     "p.pupil_name AS pupil",
                     "e.exam_name AS exam",
                     "s.subject_name AS subject",
                     "p.reg_no AS registration_number",
                     "cl.class_name AS class",
-                    dbType.equalsIgnoreCase("postgresql") ?
-                            "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS total_score" :
-                            "SUM(CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END) AS total_score"
+                    isCorrectColumn
             };
 
-            String table = "answers a " +
-                    "JOIN choices c ON a.choices_id = c.choices_id " +
-                    "JOIN questions q ON a.questions_id = q.questions_id " +
-                    "JOIN pupils p ON a.pupils_id = p.pupils_id " +
-                    "JOIN exam_subjects es ON q.exam_subject_id = es.exam_subject_id " +
-                    "JOIN exam e ON es.exam_id = e.exam_id " +
-                    "JOIN subject s ON es.subject_id = s.subject_id " +
-                    "JOIN class cl ON p.class_id = cl.class_id";
-            String where = "es.exam_subject_id = ? ";
-            String groupBy = "p.pupil_name, e.exam_name, s.subject_name, p.reg_no, cl.class_name";
+            String[][] joins = {
+                    {"INNER", "choices c", "a.choices_id = c.choices_id"},
+                    {"INNER", "questions q", "a.questions_id = q.questions_id"},
+                    {"INNER", "pupils p", "a.pupils_id = p.pupils_id"},
+                    {"INNER", "exam_subjects es", "q.exam_subject_id = es.exam_subject_id"},
+                    {"INNER", "exam e", "es.exam_id = e.exam_id"},
+                    {"INNER", "subject s", "es.subject_id = s.subject_id"},
+                    {"INNER", "class cl", "p.class_id = cl.class_id"}
+            };
 
-            Object[] params = new Object[]{examSubject};
+            String whereClause = "es.exam_subject_id = ?";
+            Object[] values = new Object[]{examSubject};
 
-            JsonArray aggregatedResults = GenericQueries.select(connection, table, columns, where, groupBy, params);
+            String groupBy = "p.pupil_name, e.exam_name, s.subject_name, p.reg_no, cl.class_name"; // Define your GROUP BY clause here
+            JsonArray aggregatedResults = GenericQueries.select(connection, "answers a", joins, columns, whereClause,groupBy,values);
 
             List<JsonObject> pupilsList = new ArrayList<>();
             for (JsonElement element : aggregatedResults) {
@@ -163,6 +170,7 @@ public class ExamReport {
                 top5Pupils.add(pupilsList.get(i));
             }
 
+            Gson gson = new Gson();
             String jsonString = gson.toJson(top5Pupils);
             System.out.println(jsonString);
 
@@ -172,33 +180,36 @@ public class ExamReport {
     }
 
 
+
     public static void generatePupilScoreReport(Connection connection, int examId) {
         String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
+        String scoreColumn = dbType.equalsIgnoreCase("postgresql") ?
+                "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS score" :
+                "SUM(CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END) AS score";
         try {
             String[] columns = {
                     "p.pupil_name AS pupil_name",
                     "e.exam_name AS exam_name",
                     "cl.class_name AS class_name",
                     "s.subject_name AS subject_name",
-                    dbType.equalsIgnoreCase("postgresql") ?
-                            "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS score" :
-                            "SUM(CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END) AS score"
+                    scoreColumn
             };
 
-            String table = "pupils p " +
-                    "JOIN answers a ON p.pupils_id = a.pupils_id " +
-                    "JOIN choices c ON a.choices_id = c.choices_id " +
-                    "JOIN questions q ON a.questions_id = q.questions_id " +
-                    "JOIN exam_subjects es ON q.exam_subject_id = es.exam_subject_id " +
-                    "JOIN exam e ON es.exam_id = e.exam_id " +
-                    "JOIN class cl ON e.class_id = cl.class_id " +
-                    "JOIN subject s ON es.subject_id = s.subject_id";
+            String[][] joins = {
+                    {"INNER", "answers a", "p.pupils_id = a.pupils_id"},
+                    {"INNER", "choices c", "a.choices_id = c.choices_id"},
+                    {"INNER", "questions q", "a.questions_id = q.questions_id"},
+                    {"INNER", "exam_subjects es", "q.exam_subject_id = es.exam_subject_id"},
+                    {"INNER", "exam e", "es.exam_id = e.exam_id"},
+                    {"INNER", "class cl", "e.class_id = cl.class_id"},
+                    {"INNER", "subject s", "es.subject_id = s.subject_id"}
+            };
             String where = "e.exam_id = ?";
             String groupBy = "p.pupil_name, s.subject_name,cl.class_name,e.exam_name";
 
             Object[] params = new Object[]{examId};
 
-            JsonArray aggregatedResults = GenericQueries.select(connection, table, columns, where, groupBy, params);
+            JsonArray aggregatedResults = GenericQueries.select(connection, "pupils p", joins, columns, where, groupBy,params);
 
             Map<String, Map<String, Integer>> pupilScoresMap = new LinkedHashMap<>();
             for (JsonElement element : aggregatedResults) {
