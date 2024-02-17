@@ -47,6 +47,7 @@ public class GenericQueries {
     private static JsonArray querySelect(Connection conn, String query, Object... params) throws SQLException {
         JsonArray jsonArray = new JsonArray();
         try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+            System.out.println(pstmt);
             int index = 1;
             for (Object param : params) {
                 pstmt.setObject(index++, param);
