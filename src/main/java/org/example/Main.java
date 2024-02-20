@@ -1,59 +1,111 @@
 package org.example;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import io.undertow.Undertow;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.Deque;
 
 public class Main {
-
+    private static final int PORT = 2000;
     public static void main(String[] args) {
-        File configFile = getConfigFile(); // Ensure this method exists and returns a valid File object
+        File configFile = getConfigFile();
         try {
-            DatabaseConnectionManager dbManager = new DatabaseConnectionManager(configFile); // Assuming constructor and method signatures
+            DatabaseConnectionManager dbManager = new DatabaseConnectionManager(configFile);
             Connection connection = dbManager.getConnection();
                 System.out.println("Database connected successfully");
-                dbManager.createTables(connection); // Assuming this method exists
+                dbManager.createTables(connection);
 
                 Undertow server = Undertow.builder()
-                        .addHttpListener(2000, "localhost")
+                        .addHttpListener(PORT, "localhost")
                         .setHandler(exchange -> {
                             // Define routes
+                            String requestMethod = exchange.getRequestMethod().toString();
+
                             switch (exchange.getRequestPath()) {
                                 case "/create/class":
-                                    ClassController.createClass(connection, exchange);
+                                    if ("POST".equalsIgnoreCase(requestMethod)) {
+                                        ClassController.createClass(connection, exchange);
+                                    } else {
+                                        exchange.getResponseSender().send("POST method required for /create/class.");
+                                    }
                                     break;
                                 case "/update/class":
-                                    ClassController.updateClass(connection, exchange);
+                                    if ("PUT".equalsIgnoreCase(requestMethod)) {
+                                        ClassController.updateClass(connection, exchange);
+                                    } else {
+                                        exchange.getResponseSender().send("PUT method required for /update/class.");
+                                    }
                                     break;
                                 case "/select/class":
-                                    ClassController.findClass(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> classIdDeque = exchange.getQueryParameters().get("id");
+                                        if (classIdDeque != null && !classIdDeque.isEmpty()) {
+                                            // check if id exists call findClassById method
+                                            ClassController.findClassById(connection, exchange, classIdDeque.getFirst());
+                                        } else {
+                                                //fetch all classes
+                                            ClassController.findAll(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/class.");
+                                    }
                                     break;
                                 case "/create/teacher":
-                                    TeacherController.createTeacher(connection, exchange);
+                                    if ("POST".equalsIgnoreCase(requestMethod)) {
+                                        TeacherController.createTeacher(connection, exchange);
+                                    } else {
+                                        exchange.getResponseSender().send("POST method required for /create/teacher.");
+                                    }
                                     break;
                                 case "/update/teacher":
-                                    TeacherController.updateTeacher(connection, exchange);
+                                    if ("PUT".equalsIgnoreCase(requestMethod)) {
+                                        TeacherController.updateTeacher(connection, exchange);
+                                    } else {
+                                        exchange.getResponseSender().send("PUT method required for /update/teacher.");
+                                    }
                                     break;
                                 case "/select/teacher":
-                                    TeacherController.findTeacher(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> teacherIdDeque = exchange.getQueryParameters().get("id");
+                                        if (teacherIdDeque != null && !teacherIdDeque.isEmpty()) {
+                                            TeacherController.findTeacherById(connection, exchange, teacherIdDeque.getFirst());
+                                        } else {
+                                            TeacherController.findAll(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/teacher.");
+                                    }
                                     break;
                                 case "/create/pupil":
-                                    PupilController.createPupil(connection, exchange);
+                                    if ("POST".equalsIgnoreCase(requestMethod)) {
+                                        PupilController.createPupil(connection, exchange);
+                                    } else {
+                                        exchange.getResponseSender().send("POST method required for /create/pupil.");
+                                    }
                                     break;
                                 case "/update/pupil":
-                                    PupilController.updatePupil(connection, exchange);
+                                    if ("PUT".equalsIgnoreCase(requestMethod)) {
+                                        PupilController.updatePupil(connection, exchange);
+                                    } else {
+                                        exchange.getResponseSender().send("PUT method required for /update/pupil.");
+                                    }
                                     break;
                                 case "/select/pupil":
-                                    PupilController.findPupil(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> pupilIdDeque = exchange.getQueryParameters().get("id");
+                                        if (pupilIdDeque != null && !pupilIdDeque.isEmpty()) {
+                                            PupilController.findPupilById(connection, exchange, pupilIdDeque.getFirst());
+                                        } else {
+                                            PupilController.findAll(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/pupil.");
+                                    }
                                     break;
                                 case "/create/subject":
                                     SubjectController.createSubject(connection, exchange);
@@ -62,7 +114,16 @@ public class Main {
                                     SubjectController.updateSubject(connection, exchange);
                                     break;
                                 case "/select/subject":
-                                    SubjectController.findSubject(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> subjectIdDeque = exchange.getQueryParameters().get("id");
+                                        if (subjectIdDeque != null && !subjectIdDeque.isEmpty()) {
+                                            SubjectController.findSubjectById(connection, exchange, subjectIdDeque.getFirst());
+                                        } else {
+                                            SubjectController.findAll(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/subject.");
+                                    }
                                     break;
                                 case "/create/exam":
                                     ExamController.createExam(connection, exchange);
@@ -71,7 +132,16 @@ public class Main {
                                     ExamController.updateExam(connection, exchange);
                                     break;
                                 case "/select/exam":
-                                    ExamController.findExam(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> examIdDeque = exchange.getQueryParameters().get("id");
+                                        if (examIdDeque != null && !examIdDeque.isEmpty()) {
+                                            ExamController.findExamById(connection, exchange, examIdDeque.getFirst());
+                                        } else {
+                                            ExamController.findAll(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/exam.");
+                                    }
                                     break;
                                 case "/create/exam-schedule":
                                     ExamController.createExamSchedule(connection, exchange);
@@ -80,7 +150,16 @@ public class Main {
                                     ExamController.updateExamSchedule(connection, exchange);
                                     break;
                                 case "/select/exam-schedule":
-                                    ExamController.findExamSchedule(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> examScheduleIdDeque = exchange.getQueryParameters().get("id");
+                                        if (examScheduleIdDeque != null && !examScheduleIdDeque.isEmpty()) {
+                                            ExamController.findExamScheduleById(connection, exchange, examScheduleIdDeque.getFirst());
+                                        } else {
+                                            ExamController.findAllExamSchedules(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/exam-schedule.");
+                                    }
                                     break;
                                 case "/create/question":
                                     QuestionController.createQuestion(connection, exchange);
@@ -89,19 +168,40 @@ public class Main {
                                     QuestionController.updateQuestion(connection, exchange);
                                     break;
                                 case "/select/question":
-                                    QuestionController.findQuestion(connection, exchange);
+                                    if ("GET".equalsIgnoreCase(requestMethod)) {
+                                        Deque<String> questionIdDeque = exchange.getQueryParameters().get("id");
+                                        if (questionIdDeque != null && !questionIdDeque.isEmpty()) {
+                                            QuestionController.findQuestionById(connection, exchange, questionIdDeque.getFirst());
+                                        } else {
+                                            QuestionController.findAllQuestions(connection, exchange);
+                                        }
+                                    } else {
+                                        exchange.getResponseSender().send("GET method required for /select/question.");
+                                    }
                                     break;
                                 case "/create/choice":
                                     QuestionController.createChoice(connection, exchange);
                                     break;
-                                case "/select/choice":
-                                    QuestionController.findChoice(connection, exchange);
-                                    break;
+//                                case "/select/choice":
+//                                    QuestionController.findChoices(connection, exchange);
+//                                    break;
                                 case "/update/choice":
                                     QuestionController.updateChoice(connection, exchange);
                                     break;
                                 case "/create/answer":
                                     AnswersController.createAnswer(connection, exchange);
+                                    break;
+                                case "/report/exams-by-teacher":
+                                    ExamReport.generateExamsByTeacher(connection, exchange);
+                                    break;
+                                case "/report/generate-answers":
+                                    ExamReport.generatePupilsAnswers(connection, exchange);
+                                    break;
+                                case "/report/top-five-results":
+                                    ExamReport.generateTopPupilsByScore(connection, exchange);
+                                    break;
+                                case "/report/score-report":
+                                    ExamReport.generatePupilScoreReport(connection, exchange);
                                     break;
                                 default:
                                     defaultHandler(exchange);
@@ -110,7 +210,7 @@ public class Main {
                         }).build();
 
                 server.start();
-                System.out.println("Server started at http://localhost:2000");
+                System.out.println("⚡ Server is running on port:"+ PORT);
             } catch (SQLException e) {
                 e.printStackTrace();
                 System.err.println("Failed to initialize the database: " + e.getMessage());

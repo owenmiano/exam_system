@@ -4,18 +4,14 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.util.Headers;
 
 import java.sql.*;
 import java.util.*;
 
 public class SubjectController {
 
-    public static void findSubject(Connection connection, HttpServerExchange exchange) {
-        // Extracting the class ID from the URL path
-        Deque<String> subjectIdDeque = exchange.getQueryParameters().get("id");
-        if (subjectIdDeque != null && !subjectIdDeque.isEmpty()) {
-            String subjectIdString = subjectIdDeque.getFirst();
-
+    public static void findSubjectById(Connection connection, HttpServerExchange exchange,String subjectIdString) {
             // Extracting the columns parameter from the query string
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
             String[] columns = null;
@@ -29,15 +25,15 @@ public class SubjectController {
 
             try {
                 int subjectId = Integer.parseInt(subjectIdString);
-                final String[] finalColumns = columns; // Final copy of columns array
+                final String[] finalColumns = columns;
 
                 exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
-                    Gson gson = new Gson();
 
                     String whereClause = "subject_id = ?";
 
                     try {
                         JsonArray jsonArrayResult = GenericQueries.select(connection, "subject", finalColumns, whereClause, subjectId);
+                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                         exchange1.getResponseSender().send(jsonArrayResult.toString());
                     } catch (SQLException e) {
                         String errorMessage = "SQL Error occurred: " + e.getMessage();
@@ -50,15 +46,34 @@ public class SubjectController {
                 System.out.println(errorMessage);
                 exchange.getResponseSender().send(errorMessage);
             }
-        } else {
-            // Handle the case where the "id" parameter is missing
-            String errorMessage = "Subject ID is missing in the request URL.";
-            System.out.println(errorMessage);
-            exchange.getResponseSender().send(errorMessage);
-        }
     }
 
+    public static void findAll(Connection connection, HttpServerExchange exchange) {
+        // Extracting the columns parameter from the query string
+        Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+        String[] columns = null;
+        if (columnsDeque != null && !columnsDeque.isEmpty()) {
+            String columnsString = columnsDeque.getFirst();
+            columns = columnsString.split(",");
+        } else {
+            // If no columns parameter provided, select all columns
+            columns = new String[]{"*"};
+        }
 
+        final String[] finalColumns = columns;
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+
+            try {
+                JsonArray jsonArrayResult = GenericQueries.select(connection, "subject", finalColumns);
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                exchange1.getResponseSender().send(jsonArrayResult.toString());
+            } catch (SQLException e) {
+                String errorMessage = "SQL Error occurred: " + e.getMessage();
+                System.out.println(errorMessage);
+                exchange1.getResponseSender().send(errorMessage);
+            }
+        });
+    }
 
 
     //insert
@@ -76,6 +91,7 @@ public class SubjectController {
 
             String insertionResult = GenericQueries.insertData(connection, "subject", subjectData);
             System.out.println(insertionResult);
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
             exchange1.getResponseSender().send(insertionResult);
         });
     }
@@ -104,6 +120,7 @@ public class SubjectController {
                     String whereClause = "subject_id = ?";
 
                     String result = GenericQueries.update(connection, "subject", subjectData, whereClause, subjectId);
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     exchange1.getResponseSender().send(result);
 
                 });

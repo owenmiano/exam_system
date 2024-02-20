@@ -3,6 +3,8 @@ package org.example;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.util.Headers;
+
 import java.sql.Connection;
 
 
@@ -34,6 +36,7 @@ public class AnswersController {
 
             String insertionResult = GenericQueries.insertData(connection, "answers", answerData);
             System.out.println(insertionResult);
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
             exchange1.getResponseSender().send(insertionResult);
         });
     }

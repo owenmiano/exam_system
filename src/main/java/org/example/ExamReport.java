@@ -4,28 +4,35 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.util.Date;
+
+import java.io.*;
+import java.util.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
+
+import io.undertow.server.HttpServerExchange;
+import io.undertow.util.Headers;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Map;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class ExamReport {
 
+    public static void generateExamsByTeacher(Connection connection, HttpServerExchange exchange) {
+        Deque<String> teacherIdDeque = exchange.getQueryParameters().get("teacherId");
+        if (teacherIdDeque == null || teacherIdDeque.isEmpty()) {
+            exchange.getResponseSender().send("Teacher ID is required.");
+            return;
+        }
 
-    public static void generateExamsByTeacher(Connection connection, int teacherId) {
+        String teacherIdString = teacherIdDeque.getFirst();
         try {
+            int teacherId = Integer.parseInt(teacherIdString);
             String[] columns = {
                     "e.exam_name",
                     "es.exam_date",
@@ -34,7 +41,6 @@ public class ExamReport {
                     "cl.class_name"
             };
 
-            // Adjust the joins to the new format expected by the updated select method
             String[][] joins = {
                     {"INNER", "exam_subjects es", "e.exam_id = es.exam_id"},
                     {"INNER", "teachers t", "es.teacher_id = t.teacher_id"},
@@ -45,23 +51,37 @@ public class ExamReport {
             String whereClause = "t.teacher_id = ?";
             Object[] values = new Object[]{teacherId};
 
-            // Execute the updated select method with multiple joins and a parameterized where clause
             JsonArray jsonArrayResult = GenericQueries.select(connection, "exam e", joins, columns, whereClause, values);
-
-            // Convert the result to JSON String and print
             String jsonResult = jsonArrayResult.toString();
-            System.out.println(jsonResult);
 
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+            exchange.getResponseSender().send(jsonResult);
+
+        } catch (NumberFormatException e) {
+            exchange.getResponseSender().send("Invalid Teacher ID: " + teacherIdString);
+        } catch (SQLException e) {
+            exchange.getResponseSender().send("SQL Error occurred: " + e.getMessage());
         } catch (Exception e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
+            exchange.getResponseSender().send("An error occurred: " + e.getMessage());
         }
     }
 
 
-    public static void generatePupilsAnswers(Connection connection, int pupilId, int examSubject) {
-        String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
+
+
+    public static void generatePupilsAnswers(Connection connection, HttpServerExchange exchange) {
+        Deque<String> pupilIdDeque = exchange.getQueryParameters().get("pupil");
+        Deque<String> examSubjectDeque = exchange.getQueryParameters().get("examSubject");
+
+        if (pupilIdDeque == null || pupilIdDeque.isEmpty() || examSubjectDeque == null || examSubjectDeque.isEmpty()) {
+            exchange.getResponseSender().send("Pupil ID and Exam Subject ID are required.");
+            return;
+        }
         try {
+            int pupilId = Integer.parseInt(pupilIdDeque.getFirst());
+            int examSubject = Integer.parseInt(examSubjectDeque.getFirst());
+            String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
+
             String isCorrectColumn = dbType.equalsIgnoreCase("postgresql") ?
                     "CASE WHEN c.correct = true THEN 'correct' ELSE 'incorrect' END AS is_correct" :
                     "CASE WHEN c.correct = 1 THEN 'correct' ELSE 'incorrect' END AS is_correct";
@@ -70,7 +90,6 @@ public class ExamReport {
                     "CASE WHEN c.correct = true THEN q.marks ELSE 0 END AS score" :
                     "CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END AS score";
 
-            // Construct the columns array dynamically with the adjusted 'is_correct' and 'score' columns
             String[] columns = {
                     "p.pupil_name AS pupil",
                     "p.reg_no AS registration_number",
@@ -80,8 +99,8 @@ public class ExamReport {
                     "q.question_no",
                     "q.description AS question",
                     "c.option_value AS chosen_answer",
-                    isCorrectColumn, // Use the dynamically determined column definition
-                    scoreColumn // Use the dynamically determined column definition
+                    isCorrectColumn,
+                    scoreColumn
             };
 
             String[][] joins = {
@@ -96,7 +115,6 @@ public class ExamReport {
 
             String whereClause = "p.pupils_id = ? AND es.exam_subject_id = ?";
             Object[] params = new Object[]{pupilId, examSubject};
-            // Execute the updated select method with multiple joins and a parameterized where clause
             JsonArray answersReport = GenericQueries.select(connection, "answers a", joins, columns, whereClause, params);
 
             int totalScore = 0;
@@ -109,10 +127,8 @@ public class ExamReport {
             JsonObject totalScoreObject = new JsonObject();
             totalScoreObject.addProperty("total_score", totalScore);
             answersReport.add(totalScoreObject);
-
-            Gson gson = new Gson();
-            String jsonString = gson.toJson(answersReport);
-            System.out.println(jsonString);
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+            exchange.getResponseSender().send(answersReport.toString());
 
         } catch (SQLException e) {
             System.out.println("An error occurred: " + e.getMessage());
@@ -121,8 +137,15 @@ public class ExamReport {
     }
 
 
-    public static void generateTopPupilsByScore(Connection connection, int examSubject) {
+    public static void generateTopPupilsByScore(Connection connection, HttpServerExchange exchange) {
+        Deque<String> examSubjectDeque = exchange.getQueryParameters().get("examSubject");
+
+        if (examSubjectDeque == null) {
+            exchange.getResponseSender().send("Exam Subject ID is required.");
+            return;
+        }
         try {
+            int examSubject = Integer.parseInt(examSubjectDeque.getFirst());
             String dbType = DatabaseConnectionManager.DatabaseConfig.getDbType();
 
             String isCorrectColumn = dbType.equalsIgnoreCase("postgresql") ?
@@ -165,14 +188,12 @@ public class ExamReport {
                 return Integer.compare(scoreB, scoreA);
             });
 
-            JsonArray top5Pupils = new JsonArray();
+            JsonArray topFivePupils = new JsonArray();
             for (int i = 0; i < Math.min(5, pupilsList.size()); i++) {
-                top5Pupils.add(pupilsList.get(i));
+                topFivePupils.add(pupilsList.get(i));
             }
-
-            Gson gson = new Gson();
-            String jsonString = gson.toJson(top5Pupils);
-            System.out.println(jsonString);
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+            exchange.getResponseSender().send(topFivePupils.toString());
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -181,7 +202,14 @@ public class ExamReport {
 
 
 
-    public static void generatePupilScoreReport(Connection connection, int examId) {
+    public static void generatePupilScoreReport(Connection connection, HttpServerExchange exchange) {
+        Deque<String> examDeque = exchange.getQueryParameters().get("exam");
+
+        if (examDeque == null) {
+            exchange.getResponseSender().send("Exam ID is required.");
+            return;
+        }
+        int exam = Integer.parseInt(examDeque.getFirst());
         String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
         String scoreColumn = dbType.equalsIgnoreCase("postgresql") ?
                 "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS score" :
@@ -207,7 +235,7 @@ public class ExamReport {
             String where = "e.exam_id = ?";
             String groupBy = "p.pupil_name, s.subject_name,cl.class_name,e.exam_name";
 
-            Object[] params = new Object[]{examId};
+            Object[] params = new Object[]{exam};
 
             JsonArray aggregatedResults = GenericQueries.select(connection, "pupils p", joins, columns, where, groupBy,params);
 
@@ -293,14 +321,43 @@ public class ExamReport {
 
             try (FileOutputStream outputStream = new FileOutputStream(newExcelFileName)) {
                 workbook.write(outputStream);
+            } finally {
+                if (workbook != null) {
+                    workbook.close(); // Ensure the workbook is closed to free resources
+                }
             }
 
-            workbook.close();
+            File file = new File(newExcelFileName);
+            if (file.exists()) {
+                exchange.dispatch(() -> {
+                    // Correctly configure the response headers before entering blocking mode.
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/octet-stream");
+                    exchange.getResponseHeaders().put(Headers.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getName() + "\"");
 
-            System.out.println("Pupil Score Report generated successfully.");
+                    exchange.startBlocking();
+
+                    try (InputStream inputStream = new FileInputStream(file);
+                         OutputStream outputStream = exchange.getOutputStream()) {
+                        byte[] buf = new byte[8192];
+                        int length;
+                        while ((length = inputStream.read(buf)) > 0) {
+                            outputStream.write(buf, 0, length);
+                        }
+                        outputStream.flush(); // Make sure all data is sent.
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        exchange.setStatusCode(500);
+                        exchange.getResponseSender().send("Error occurred while sending the report.");
+                    }
+                });
+            } else {
+                exchange.setStatusCode(404);
+                exchange.getResponseSender().send("Report file not found.");
+            }
 
         } catch (SQLException | IOException e) {
             e.printStackTrace();
+            exchange.getResponseSender().send("Error: "+e.getMessage());
         }
     }
 

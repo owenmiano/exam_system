@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.util.Headers;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
@@ -28,12 +29,8 @@ public class TeacherController {
     }
 
 
-    public static void findTeacher(Connection connection, HttpServerExchange exchange) {
-        Deque<String> teacherIdDeque = exchange.getQueryParameters().get("id");
-        if (teacherIdDeque != null && !teacherIdDeque.isEmpty()) {
-            String teacherIdString = teacherIdDeque.getFirst();
+    public static void findTeacherById(Connection connection, HttpServerExchange exchange,String teacherIdString) {
 
-            // Extracting the columns parameter from the query string
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
             String[] columns = null;
             if (columnsDeque != null && !columnsDeque.isEmpty()) {
@@ -44,17 +41,16 @@ public class TeacherController {
                 columns = new String[]{"*"};
             }
 
-            try {
                 int teacherId = Integer.parseInt(teacherIdString);
                 final String[] finalColumns = columns; // Final copy of columns array
 
                 exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
-                    Gson gson = new Gson();
 
                     String whereClause = "teacher_id = ?";
 
                     try {
                         JsonArray jsonArrayResult = GenericQueries.select(connection, "teachers", finalColumns, whereClause, teacherId);
+                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                         exchange1.getResponseSender().send(jsonArrayResult.toString());
                     } catch (SQLException e) {
                         String errorMessage = "SQL Error occurred: " + e.getMessage();
@@ -62,17 +58,33 @@ public class TeacherController {
                         exchange1.getResponseSender().send(errorMessage);
                     }
                 });
-            } catch (NumberFormatException e) {
-                String errorMessage = "Invalid teacher ID: " + teacherIdString;
-                System.out.println(errorMessage);
-                exchange.getResponseSender().send(errorMessage);
-            }
+    }
+
+    public static void findAll(Connection connection, HttpServerExchange exchange) {
+        // Extracting the columns parameter from the query string
+        Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+        String[] columns = null;
+        if (columnsDeque != null && !columnsDeque.isEmpty()) {
+            String columnsString = columnsDeque.getFirst();
+            columns = columnsString.split(",");
         } else {
-            // Handle the case where the "id" parameter is missing
-            String errorMessage = "Teacher ID is missing in the request URL.";
-            System.out.println(errorMessage);
-            exchange.getResponseSender().send(errorMessage);
+            // If no columns parameter provided, select all columns
+            columns = new String[]{"*"};
         }
+
+        final String[] finalColumns = columns;
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+
+            try {
+                JsonArray jsonArrayResult = GenericQueries.select(connection, "teachers", finalColumns);
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                exchange1.getResponseSender().send(jsonArrayResult.toString());
+            } catch (SQLException e) {
+                String errorMessage = "SQL Error occurred: " + e.getMessage();
+                System.out.println(errorMessage);
+                exchange1.getResponseSender().send(errorMessage);
+            }
+        });
     }
 
     public static void createTeacher(Connection connection, HttpServerExchange exchange) {
@@ -126,6 +138,7 @@ public class TeacherController {
                 String insertionResult = GenericQueries.insertData(connection, "teachers", teacherData);
 
                 System.out.println(insertionResult);
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                 exchange1.getResponseSender().send(insertionResult);
             } catch (JsonSyntaxException e) {
                 String errorMessage = "Error parsing JSON data: " + e.getMessage();
@@ -157,6 +170,7 @@ public class TeacherController {
                     String whereClause = "teacher_id = ?";
 
                     String result = GenericQueries.update(connection, "teachers", teacherData, whereClause, teacherId);
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     exchange1.getResponseSender().send(result);
 
                 });
