@@ -1,155 +1,236 @@
 package org.example;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.undertow.server.HttpServerExchange;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class ExamController {
-    public static void findExam(Connection connection, HashMap<String, Object> examData, String[] columns) {
-        try {
-            if (examData == null || examData.isEmpty()) {
-                System.out.println("No Exam data provided.");
-                return;
-            }
+    public static void findExam(Connection connection, HttpServerExchange exchange) {
+        Deque<String> examIdDeque = exchange.getQueryParameters().get("id");
+        if (examIdDeque != null && !examIdDeque.isEmpty()) {
+            String examIdString = examIdDeque.getFirst();
 
-            StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
-            ArrayList<Object> values = new ArrayList<>();
-            for (Map.Entry<String, Object> entry : examData.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                whereClauseJoiner.add(key + " = ?");
-                values.add(value);
-            }
-
-            String whereClause = whereClauseJoiner.toString();
-            JsonArray jsonArrayResult = GenericQueries.select(connection, "exam", columns, whereClause, values.toArray());
-            String jsonResult = jsonArrayResult.toString();
-            System.out.println(jsonResult);
-
-        } catch (Exception e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-
-    public static void createExam(Connection connection, HashMap<String, Object> examData) {
-        if (examData == null || !examData.containsKey("exam_name")) {
-            System.out.println("Exam data is missing or incomplete.");
-            return;
-        }
-        String examName = examData.get("exam_name") != null ? examData.get("exam_name").toString() : "";
-
-        if (examName.trim().isEmpty()) {
-            System.out.println("Exam name cannot be empty.");
-            return;
-        }
-
-
-        boolean isInserted = GenericQueries.insertData(connection, "exam", examData); // Replace "class" with your actual table name
-
-
-        if (isInserted) {
-            System.out.println("Exam added successfully");
-        } else {
-            System.out.println("Failed to add class");
-        }
-    }
-
-    public static void updateExam(Connection connection, HashMap<String, Object> examData, String examIdString) {
-        try {
-            if (examData == null || examData.isEmpty()) {
-                System.out.println("Exam data is missing or empty.");
-                return;
-            }
-            int examId = Integer.parseInt(examIdString);
-            String whereClause = "exam_id = ?";
-
-            JsonObject result = GenericQueries.update(connection, "exam", examData, whereClause,new Object[]{examId});
-
-            if (result.get("success").getAsBoolean()) {
-                System.out.println("Exam updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
+            // Extracting the columns parameter from the query string
+            Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+            String[] columns = null;
+            if (columnsDeque != null && !columnsDeque.isEmpty()) {
+                String columnsString = columnsDeque.getFirst();
+                columns = columnsString.split(",");
             } else {
-                System.out.println("No rows were updated.");
+                // If no columns parameter provided, select all columns
+                columns = new String[]{"*"};
             }
-        } catch (SQLException e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
+            try {
+                int examId = Integer.parseInt(examIdString);
+                final String[] finalColumns = columns; // Final copy of columns array
 
-    public static void createExamSchedule(Connection connection, HashMap<String, Object> examScheduleData) {
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
 
-        boolean isInserted = GenericQueries.insertData(connection, "exam_subjects", examScheduleData); // Replace "class" with your actual table name
+                    String whereClause = "exam_id = ?";
 
-
-        if (isInserted) {
-            System.out.println("Exam Schedule added successfully");
+                    try {
+                        JsonArray jsonArrayResult = GenericQueries.select(connection, "exam", finalColumns, whereClause, examId);
+                        exchange1.getResponseSender().send(jsonArrayResult.toString());
+                    } catch (SQLException e) {
+                        String errorMessage = "SQL Error occurred: " + e.getMessage();
+                        System.out.println(errorMessage);
+                        exchange1.getResponseSender().send(errorMessage);
+                    }
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid exam ID: " + examIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
         } else {
-            System.out.println("Failed to add Exam Schedule");
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Exam ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
         }
     }
 
-    public static void findExamSchedule(Connection connection, int examSubjectId) {
-        try {
-            String[] columns = {
-                    "e.exam_id",
-                    "e.exam_name",
-                    "es.exam_duration",
-                    "es.exam_date",
-                    "t.teacher_name",
-                    "s.subject_name",
-                    "cl.class_name"
-            };
 
-            String table = "exam_subjects es " +
-                    "JOIN exam e ON e.exam_id = es.exam_id " +
-                    "JOIN teachers t ON es.teacher_id = t.teacher_id " +
-                    "JOIN subject s ON es.subject_id = s.subject_id " +
-                    "JOIN class cl ON e.class_id = cl.class_id";
+    public static void createExam(Connection connection, HttpServerExchange exchange) {
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+            Gson gson = new Gson();
+            JsonObject examData = gson.fromJson(requestBody, JsonObject.class);
 
-            String whereClause = "es.exam_subject_id = ?";
-
-            Object[] values = new Object[]{examSubjectId};
-
-            JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, values);
-
-            String jsonResult = jsonArrayResult.toString();
-            System.out.println(jsonResult);
-
-        } catch (Exception e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public static void updateExamSchedule(Connection connection, HashMap<String, Object> examScheduleData, int examSubjectId) {
-        try {
-            if (examScheduleData == null || examScheduleData.isEmpty()) {
-                System.out.println("Exam Schedule data is missing or empty.");
+            if (examData == null || !examData.has("exam_name") || examData.get("exam_name").getAsString().trim().isEmpty()) {
+                String errorMessage = "Exam name is missing.";
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
                 return;
             }
 
-            String whereClause = "exam_subject_id = ?";
+            String insertionResult = GenericQueries.insertData(connection, "exam", examData);
+            System.out.println(insertionResult);
+            exchange1.getResponseSender().send(insertionResult);
+        });
+    }
 
-            JsonObject result = GenericQueries.update(connection, "exam_subjects", examScheduleData, whereClause,new Object[]{examSubjectId});
+    public static void updateExam(Connection connection, HttpServerExchange exchange) {
+        // Extracting the class ID from the URL path
+        Deque<String> examIdDeque = exchange.getQueryParameters().get("id");
+        if (examIdDeque != null && !examIdDeque.isEmpty()) {
+            String examIdString = examIdDeque.getFirst();
 
-            if (result.get("success").getAsBoolean()) {
-                System.out.println("Exam Schedule updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
-            } else {
-                System.out.println("No rows were updated.");
+            try {
+                int examId = Integer.parseInt(examIdString);
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+                    JsonObject examData = gson.fromJson(requestBody, JsonObject.class);
+
+                    if (examData == null || !examData.has("exam_name") || examData.get("exam_name").getAsString().trim().isEmpty()) {
+                        String errorMessage = "Exam name is missing.";
+                        System.out.println(errorMessage);
+                        exchange.getResponseSender().send(errorMessage);
+                        return;
+                    }
+
+                    String whereClause = "exam_id = ?";
+
+                    String result = GenericQueries.update(connection, "exam", examData, whereClause, examId);
+                    exchange1.getResponseSender().send(result);
+
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid exam ID: " + examIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
             }
-        } catch (SQLException e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Exam ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
+        }
+    }
+
+
+    public static void createExamSchedule(Connection connection, HttpServerExchange exchange) {
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+            Gson gson = new Gson();
+            JsonObject examScheduleData = gson.fromJson(requestBody, JsonObject.class);
+
+            if (examScheduleData == null || !examScheduleData.has("exam_id") || examScheduleData.get("exam_id").getAsString().trim().isEmpty()) {
+                String errorMessage = "Exam ID is missing.";
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+                return;
+            }
+            if (examScheduleData == null || !examScheduleData.has("subject_id") || examScheduleData.get("subject_id").getAsString().trim().isEmpty()) {
+                String errorMessage = "Subject ID is missing.";
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+                return;
+            }
+            if (examScheduleData == null || !examScheduleData.has("teacher_id") || examScheduleData.get("teacher_id").getAsString().trim().isEmpty()) {
+                String errorMessage = "Teacher ID is missing.";
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+                return;
+            }
+
+
+            String insertionResult = GenericQueries.insertData(connection, "exam_subjects", examScheduleData);
+            System.out.println(insertionResult);
+            exchange1.getResponseSender().send(insertionResult);
+        });
+    }
+
+
+    public static void findExamSchedule(Connection connection, HttpServerExchange exchange) {
+        Deque<String> examScheduleIdDeque = exchange.getQueryParameters().get("id");
+        if (examScheduleIdDeque != null && !examScheduleIdDeque.isEmpty()) {
+            String examScheduleIdString = examScheduleIdDeque.getFirst();
+            try {
+                int examScheduleId = Integer.parseInt(examScheduleIdString); // Convert exam ID string to int
+
+                String[] columns = {
+                        "e.exam_id",
+                        "e.exam_name",
+                        "es.exam_duration",
+                        "es.exam_date",
+                        "t.teacher_name",
+                        "s.subject_name",
+                        "cl.class_name"
+                };
+
+                String table = "exam_subjects es " +
+                        "JOIN exam e ON e.exam_id = es.exam_id " +
+                        "JOIN teachers t ON es.teacher_id = t.teacher_id " +
+                        "JOIN subject s ON es.subject_id = s.subject_id " +
+                        "JOIN class cl ON e.class_id = cl.class_id";
+
+                String whereClause = "es.exam_subject_id = ?"; // Update to filter by exam ID
+
+                Object[] values = new Object[]{examScheduleId}; // Use examId as the parameter value
+
+                // Try-with-resources to ensure PreparedStatement is properly closed
+                try {
+                    JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, values);
+                    exchange.getResponseSender().send(jsonArrayResult.toString());
+                } catch (SQLException e) {
+                    String errorMessage = "SQL Error occurred: " + e.getMessage();
+                    System.out.println(errorMessage);
+                    exchange.getResponseSender().send(errorMessage);
+                }
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid exam schedule ID format.";
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            } catch (Exception e) {
+                String errorMessage = "An error occurred: " + e.getMessage();
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Exam Schedule ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
+        }
+    }
+
+
+    public static void updateExamSchedule(Connection connection, HttpServerExchange exchange) {
+        Deque<String> examScheduleIdDeque = exchange.getQueryParameters().get("id");
+        if (examScheduleIdDeque != null && !examScheduleIdDeque.isEmpty()) {
+            String examScheduleIdString = examScheduleIdDeque.getFirst();
+
+            try {
+                int examScheduleId = Integer.parseInt(examScheduleIdString);
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+                    JsonObject examScheduleData = gson.fromJson(requestBody, JsonObject.class);
+
+                    String whereClause = "exam_subject_id = ?";
+
+                    String result = GenericQueries.update(connection, "exam_subjects", examScheduleData, whereClause, examScheduleId);
+                    exchange1.getResponseSender().send(result);
+
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid exam schedule ID: " + examScheduleIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Exam schedule ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
         }
     }
 

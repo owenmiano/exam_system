@@ -1,94 +1,218 @@
 package org.example;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.undertow.server.HttpServerExchange;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class QuestionController {
 
-    public static void findQuestion(Connection connection, HashMap<String, Object> questionData, String[] columns) {
-        try {
-            if (questionData == null || questionData.isEmpty()) {
-                System.out.println("No Question data provided.");
-                return;
-            }
+    public static void findQuestion(Connection connection, HttpServerExchange exchange) {
+        Deque<String> questionIdDeque = exchange.getQueryParameters().get("id");
+        if (questionIdDeque != null && !questionIdDeque.isEmpty()) {
+            String questionIdString = questionIdDeque.getFirst();
 
-            StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
-            ArrayList<Object> values = new ArrayList<>();
-            for (Map.Entry<String, Object> entry : questionData.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                whereClauseJoiner.add(key + " = ?");
-                values.add(value);
-            }
-
-            String whereClause = whereClauseJoiner.toString();
-            JsonArray jsonArrayResult = GenericQueries.select(connection, "questions", columns, whereClause, values.toArray());
-            String jsonResult = jsonArrayResult.toString();
-            System.out.println(jsonResult);
-
-        } catch (Exception e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-
-    public static void createQuestion(Connection connection, HashMap<String, Object> questionData) {
-        if (questionData == null || !questionData.containsKey("exam_name")) {
-            System.out.println("Question data is missing or incomplete.");
-            return;
-        }
-        if (!questionData.containsKey("question_no") || questionData.get("question_no") == null) {
-            System.out.println("Question number is missing.");
-            return;
-        }
-
-        if (!questionData.containsKey("description") || questionData.get("description") == null || questionData.get("description").toString().trim().isEmpty()) {
-            System.out.println("Description cannot be empty.");
-            return;
-        }
-
-        if (!questionData.containsKey("marks") || questionData.get("marks") == null) {
-            System.out.println("Marks is missing.");
-            return;
-        }
-
-
-        boolean isInserted = GenericQueries.insertData(connection, "questions", questionData); // Replace "class" with your actual table name
-
-
-        if (isInserted) {
-            System.out.println("Question added successfully");
-        } else {
-            System.out.println("Failed to add question");
-        }
-    }
-    public static void updateQuestion(Connection connection, HashMap<String, Object> questionData, String questionIdString) {
-        try {
-            if (questionData == null || questionData.isEmpty()) {
-                System.out.println("Question data is missing or empty.");
-                return;
-            }
-            int questionId = Integer.parseInt(questionIdString);
-            String whereClause = "question_id = ?";
-
-            JsonObject result = GenericQueries.update(connection, "questions", questionData, whereClause,new Object[]{questionId});
-
-            if (result.get("success").getAsBoolean()) {
-                System.out.println("Question updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
+            // Extracting the columns parameter from the query string
+            Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+            String[] columns = null;
+            if (columnsDeque != null && !columnsDeque.isEmpty()) {
+                String columnsString = columnsDeque.getFirst();
+                columns = columnsString.split(",");
             } else {
-                System.out.println("No rows were updated.");
+                // If no columns parameter provided, select all columns
+                columns = new String[]{"*"};
             }
-        } catch (SQLException e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
+
+            try {
+                int questionId = Integer.parseInt(questionIdString);
+                final String[] finalColumns = columns; // Final copy of columns array
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+
+                    String whereClause = "questions_id = ?";
+
+                    try {
+                        JsonArray jsonArrayResult = GenericQueries.select(connection, "questions", finalColumns, whereClause, questionId);
+                        exchange1.getResponseSender().send(jsonArrayResult.toString());
+                    } catch (SQLException e) {
+                        String errorMessage = "SQL Error occurred: " + e.getMessage();
+                        System.out.println(errorMessage);
+                        exchange1.getResponseSender().send(errorMessage);
+                    }
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid question ID: " + questionIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Question ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
+        }
+    }
+
+
+    public static void createQuestion(Connection connection, HttpServerExchange exchange) {
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+            Gson gson = new Gson();
+            JsonObject questionData = gson.fromJson(requestBody, JsonObject.class);
+
+            if (!questionData.has("question_no") || questionData.get("question_no").isJsonNull()) {
+                System.out.println("Question number is missing.");
+                return;
+            }
+
+            if (!questionData.has("description") || questionData.get("description").isJsonNull() || questionData.get("description").getAsString().trim().isEmpty()) {
+                System.out.println("Description cannot be empty.");
+                return;
+            }
+
+            if (!questionData.has("marks") || questionData.get("marks").isJsonNull()) {
+                System.out.println("Marks is missing.");
+                return;
+            }
+
+            String insertionResult = GenericQueries.insertData(connection, "questions", questionData);
+            System.out.println(insertionResult);
+            exchange1.getResponseSender().send(insertionResult);
+        });
+    }
+
+    public static void updateQuestion(Connection connection, HttpServerExchange exchange) {
+        Deque<String> questionIdDeque = exchange.getQueryParameters().get("id");
+        if (questionIdDeque != null && !questionIdDeque.isEmpty()) {
+            String questionIdString = questionIdDeque.getFirst();
+
+            try {
+                int questionId = Integer.parseInt(questionIdString);
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+                    JsonObject questionData = gson.fromJson(requestBody, JsonObject.class);
+
+                    String whereClause = "questions_id = ?";
+
+                    String result = GenericQueries.update(connection, "questions", questionData, whereClause, questionId);
+                    exchange1.getResponseSender().send(result);
+
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid question ID: " + questionIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Question ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
+        }
+    }
+
+    public static void createChoice(Connection connection, HttpServerExchange exchange) {
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+            Gson gson = new Gson();
+            JsonObject choiceData = gson.fromJson(requestBody, JsonObject.class);
+
+            if (!choiceData.has("option_label") || choiceData.get("option_label").isJsonNull()) {
+                System.out.println("Option label is missing.");
+                return;
+            }
+
+            if (!choiceData.has("option_value") ||  choiceData.get("option_value").getAsString().trim().isEmpty()) {
+                System.out.println("Option value cannot be empty.");
+                return;
+            }
+
+
+            String insertionResult = GenericQueries.insertData(connection, "choices", choiceData);
+            System.out.println(insertionResult);
+            exchange1.getResponseSender().send(insertionResult);
+        });
+    }
+
+    public static void findChoice(Connection connection, HttpServerExchange exchange) {
+        Deque<String> choiceIdDeque = exchange.getQueryParameters().get("id");
+        if (choiceIdDeque != null && !choiceIdDeque.isEmpty()) {
+            String choiceIdString = choiceIdDeque.getFirst();
+
+            // Extracting the columns parameter from the query string
+            Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+            String[] columns = null;
+            if (columnsDeque != null && !columnsDeque.isEmpty()) {
+                String columnsString = columnsDeque.getFirst();
+                columns = columnsString.split(",");
+            } else {
+                // If no columns parameter provided, select all columns
+                columns = new String[]{"*"};
+            }
+
+            try {
+                int choicesId = Integer.parseInt(choiceIdString);
+                final String[] finalColumns = columns; // Final copy of columns array
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+
+                    String whereClause = "choices_id = ?";
+
+                    try {
+                        JsonArray jsonArrayResult = GenericQueries.select(connection, "choices", finalColumns, whereClause, choicesId);
+                        exchange1.getResponseSender().send(jsonArrayResult.toString());
+                    } catch (SQLException e) {
+                        String errorMessage = "SQL Error occurred: " + e.getMessage();
+                        System.out.println(errorMessage);
+                        exchange1.getResponseSender().send(errorMessage);
+                    }
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid choices ID: " + choiceIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Choices ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
+        }
+    }
+
+    public static void updateChoice(Connection connection, HttpServerExchange exchange) {
+        Deque<String> choiceIdDeque = exchange.getQueryParameters().get("id");
+        if (choiceIdDeque != null && !choiceIdDeque.isEmpty()) {
+            String choiceIdString = choiceIdDeque.getFirst();
+
+            try {
+                int choicesId = Integer.parseInt(choiceIdString);
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+                    JsonObject questionData = gson.fromJson(requestBody, JsonObject.class);
+
+                    String whereClause = "choices_id = ?";
+
+                    String result = GenericQueries.update(connection, "choices", questionData, whereClause, choicesId);
+                    exchange1.getResponseSender().send(result);
+
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid choices ID: " + choiceIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
+            }
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Choices ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
         }
     }
 }

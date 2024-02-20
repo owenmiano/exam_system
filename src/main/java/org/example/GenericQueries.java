@@ -11,29 +11,53 @@ import java.lang.reflect.Type;
 
 public class GenericQueries {
     //  insert global method
-    public static boolean insertData(Connection connection, String tableName, HashMap<String, Object> data) {
+    public static String insertData(Connection connection, String tableName, JsonObject data) {
         StringJoiner columnNames = new StringJoiner(", ");
         StringJoiner placeholders = new StringJoiner(", ");
 
-        for (String column : data.keySet()) {
-            columnNames.add(column);
+        for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
+            columnNames.add(entry.getKey());
             placeholders.add("?");
         }
 
-        String sql = "INSERT INTO " + tableName + " (" + columnNames + ") VALUES (" + placeholders + ")";
+        String sql = "INSERT INTO " + tableName + " (" + columnNames.toString() + ") VALUES (" + placeholders.toString() + ")";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            int index = 1;
-            for (Map.Entry<String, Object> entry : data.entrySet()) {
-                pstmt.setObject(index++, entry.getValue());
-            }
 
+            int index = 1;
+            for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
+                JsonElement value = entry.getValue();
+                // Convert JsonElement to appropriate Java object
+                if (value.isJsonPrimitive()) {
+                    if (value.getAsJsonPrimitive().isNumber()) {
+                        pstmt.setObject(index++, value.getAsInt()); // Use getAsInt() for numeric values
+                    } else if (value.getAsJsonPrimitive().isBoolean()) {
+                        pstmt.setObject(index++, value.getAsBoolean());
+                    } else if (value.getAsJsonPrimitive().isString()) {
+                        pstmt.setObject(index++, value.getAsString());
+                    } else {
+                        pstmt.setObject(index++, null);
+                    }
+                } else if (value.isJsonNull()) {
+                    pstmt.setObject(index++, null);
+                } else {
+                    // For JsonArray or JsonObject, convert to String or handle differently
+                    pstmt.setObject(index++, value.toString());
+                }
+            }
             int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
+            if (affectedRows > 0) {
+                return "Data inserted successfully";
+            } else {
+                return "Failed to insert data";
+            }
         } catch (SQLException e) {
-            System.out.println("Insertion error: " + e.getMessage());
-            return false;
+            return "Error: " + e.getMessage();
         }
     }
+
+
+
+
     // select global method
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new JsonSerializer<LocalDateTime>() {
@@ -47,7 +71,6 @@ public class GenericQueries {
     private static JsonArray querySelect(Connection conn, String query, Object... params) throws SQLException {
         JsonArray jsonArray = new JsonArray();
         try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-            System.out.println(pstmt);
             int index = 1;
             for (Object param : params) {
                 pstmt.setObject(index++, param);
@@ -239,61 +262,59 @@ public class GenericQueries {
 
 
     // Global update method
-    public static JsonObject update(Connection conn, String table, Map<String, Object> updates, String where, Object... whereParams) throws SQLException {
-        JsonObject result = new JsonObject();
-        if (updates.isEmpty()) {
-            result.addProperty("success", false);
-            result.addProperty("message", "No updates provided");
-            return result;
-        }
-
-        // Constructing the SET clause
-        StringJoiner setClauses = new StringJoiner(", ");
-        for (String column : updates.keySet()) {
-            setClauses.add(column + " = ?");
-        }
-
-        // Add date_modified to be updated to the current timestamp
-        setClauses.add("date_modified = CURRENT_TIMESTAMP");
-
-        // Building the SQL query
-        String sql = "UPDATE " + table + " SET " + setClauses;
-
-        // If where clause is provided, add it to the SQL statement
-        if (where != null && !where.isEmpty()) {
-            sql += " WHERE " + where;
-        }
-
-        // Executing the update
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int index = 1;
-
-            // Setting values for the columns to be updated
-            for (Object value : updates.values()) {
-                pstmt.setObject(index++, value);
+    public static String update(Connection conn, String table, JsonObject updates, String where, Object... whereParams) {
+        try {
+            // Constructing the SET clause
+            StringJoiner setClauses = new StringJoiner(", ");
+            for (Map.Entry<String, JsonElement> entry : updates.entrySet()) {
+                setClauses.add(entry.getKey() + " = ?");
             }
 
-            // Setting values for the WHERE clause parameters
-            if (whereParams != null) {
-                for (Object param : whereParams) {
-                    pstmt.setObject(index++, param);
+          // Add date_modified to be updated to the current timestamp
+            setClauses.add("date_modified = CURRENT_TIMESTAMP");
+            // Building the SQL query
+            String sql = "UPDATE " + table + " SET " + setClauses;
+
+            // If where clause is provided, add it to the SQL statement
+            if (where != null && !where.isEmpty()) {
+                sql += " WHERE " + where;
+            }
+
+            // Executing the update
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                int index = 1;
+
+                // Setting values for the columns to be updated
+                for (Map.Entry<String, JsonElement> entry : updates.entrySet()) {
+                    JsonElement value = entry.getValue();
+                    // Convert JsonElement to appropriate Java object
+                    if (value.isJsonPrimitive()) {
+                        pstmt.setObject(index++, value.getAsString());
+                    } else if (value.isJsonNull()) {
+                        pstmt.setNull(index++, java.sql.Types.NULL);
+                    } else {
+                        pstmt.setString(index++, value.toString());
+                    }
+                }
+
+                // Setting values for the WHERE clause parameters
+                if (whereParams != null) {
+                    for (Object param : whereParams) {
+                        pstmt.setObject(index++, param);
+                    }
+                }
+
+                int affectedRows = pstmt.executeUpdate();
+                if (affectedRows > 0) {
+                    return "Data updated successfully";
+                } else {
+                    return "No data updated";
                 }
             }
-
-            int affectedRows = pstmt.executeUpdate();
-
-            // Setting the result properties
-            result.addProperty("success", affectedRows > 0);
-            result.addProperty("rowsAffected", affectedRows);
-            return result;
+        } catch (SQLException e) {
+            return "Error: " + e.getMessage();
         }
     }
-
-
-
-
-
-
 
 
 

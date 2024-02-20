@@ -1,85 +1,126 @@
 package org.example;
-
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.undertow.server.HttpServerExchange;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class SubjectController {
-    public static void findSubject(Connection connection, HashMap<String, Object> subjectData, String[] columns) {
-        try {
-            if (subjectData == null || subjectData.isEmpty()) {
-                System.out.println("No Subject data provided.");
-                return;
+
+    public static void findSubject(Connection connection, HttpServerExchange exchange) {
+        // Extracting the class ID from the URL path
+        Deque<String> subjectIdDeque = exchange.getQueryParameters().get("id");
+        if (subjectIdDeque != null && !subjectIdDeque.isEmpty()) {
+            String subjectIdString = subjectIdDeque.getFirst();
+
+            // Extracting the columns parameter from the query string
+            Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+            String[] columns = null;
+            if (columnsDeque != null && !columnsDeque.isEmpty()) {
+                String columnsString = columnsDeque.getFirst();
+                columns = columnsString.split(",");
+            } else {
+                // If no columns parameter provided, select all columns
+                columns = new String[]{"*"};
             }
 
-            StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
-            ArrayList<Object> values = new ArrayList<>();
-            for (Map.Entry<String, Object> entry : subjectData.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                whereClauseJoiner.add(key + " = ?");
-                values.add(value);
+            try {
+                int subjectId = Integer.parseInt(subjectIdString);
+                final String[] finalColumns = columns; // Final copy of columns array
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+
+                    String whereClause = "subject_id = ?";
+
+                    try {
+                        JsonArray jsonArrayResult = GenericQueries.select(connection, "subject", finalColumns, whereClause, subjectId);
+                        exchange1.getResponseSender().send(jsonArrayResult.toString());
+                    } catch (SQLException e) {
+                        String errorMessage = "SQL Error occurred: " + e.getMessage();
+                        System.out.println(errorMessage);
+                        exchange1.getResponseSender().send(errorMessage);
+                    }
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid subject ID: " + subjectIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
             }
-
-            String whereClause = whereClauseJoiner.toString();
-            JsonArray jsonArrayResult = GenericQueries.select(connection, "subject", columns, whereClause, values.toArray());
-            String jsonResult = jsonArrayResult.toString();
-            System.out.println(jsonResult);
-
-        } catch (Exception e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Subject ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
         }
     }
+
+
+
 
     //insert
-    public static void createSubject(Connection connection, HashMap<String, Object> subjectData) {
-        if (subjectData == null) {
-            System.out.println("Subject data is missing or incomplete.");
-            return;
-        }
-        String className = subjectData.get("subject_name").toString() ;
+    public static void createSubject(Connection connection, HttpServerExchange exchange) {
+        exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+            Gson gson = new Gson();
+            JsonObject subjectData = gson.fromJson(requestBody, JsonObject.class);
 
-        if (className.trim().isEmpty()) {
-            System.out.println("Subject cannot be empty.");
-            return;
-        }
-
-        boolean isInserted = GenericQueries.insertData(connection, "subject", subjectData); // Replace "class" with your actual table name
-
-        if (isInserted) {
-            System.out.println("Subject added successfully");
-        } else {
-            System.out.println("Failed to add subject");
-        }
-    }
-
-
-    public static void updateSubject(Connection connection, HashMap<String, Object> subjectData, String subjectIdString) {
-        try {
-            if (subjectData == null || subjectData.isEmpty()) {
-                System.out.println("Subject data is missing or empty.");
+            if (subjectData == null || !subjectData.has("subject_name") || subjectData.get("subject_name").getAsString().trim().isEmpty()) {
+                String errorMessage = "Subject name is missing.";
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
                 return;
             }
-            int subjectId = Integer.parseInt(subjectIdString);
-            String whereClause = "subject_id = ?";
 
+            String insertionResult = GenericQueries.insertData(connection, "subject", subjectData);
+            System.out.println(insertionResult);
+            exchange1.getResponseSender().send(insertionResult);
+        });
+    }
 
-            JsonObject result = GenericQueries.update(connection, "subject", subjectData, whereClause,new Object[]{subjectId});
+    //update class
+    public static void updateSubject(Connection connection, HttpServerExchange exchange) {
+        // Extracting the class ID from the URL path
+        Deque<String> subjectIdDeque = exchange.getQueryParameters().get("id");
+        if (subjectIdDeque != null && !subjectIdDeque.isEmpty()) {
+            String subjectIdString = subjectIdDeque.getFirst();
 
-            if (result.get("success").getAsBoolean()) {
-                System.out.println("Subject updated successfully. Rows affected: " + result.get("rowsAffected").getAsInt());
-            } else {
-                System.out.println("No rows were updated.");
+            try {
+                int subjectId = Integer.parseInt(subjectIdString);
+
+                exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+                    Gson gson = new Gson();
+                    JsonObject subjectData = gson.fromJson(requestBody, JsonObject.class);
+
+                    if (subjectData == null || !subjectData.has("subject_name") || subjectData.get("subject_name").getAsString().trim().isEmpty()) {
+                        String errorMessage = "Subject name is missing.";
+                        System.out.println(errorMessage);
+                        exchange.getResponseSender().send(errorMessage);
+                        return;
+                    }
+
+                    String whereClause = "subject_id = ?";
+
+                    String result = GenericQueries.update(connection, "subject", subjectData, whereClause, subjectId);
+                    exchange1.getResponseSender().send(result);
+
+                });
+            } catch (NumberFormatException e) {
+                String errorMessage = "Invalid subject ID: " + subjectIdString;
+                System.out.println(errorMessage);
+                exchange.getResponseSender().send(errorMessage);
             }
-        } catch (SQLException e) {
-            System.out.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
+        } else {
+            // Handle the case where the "id" parameter is missing
+            String errorMessage = "Subject ID is missing in the request URL.";
+            System.out.println(errorMessage);
+            exchange.getResponseSender().send(errorMessage);
         }
     }
 }
+
+
+
+
