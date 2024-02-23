@@ -1,18 +1,20 @@
-package org.example;
+package ke.co.skyworld.controllers;
 
+import ke.co.skyworld.queryBuilder.GenericQueries;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import io.undertow.util.PathTemplateMatch;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class TeacherController {
+public class Teacher {
     private static boolean isValidEmail(String email) {
         String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
         Pattern pattern = Pattern.compile(emailRegex);
@@ -29,8 +31,9 @@ public class TeacherController {
     }
 
 
-    public static void findTeacherById(Connection connection, HttpServerExchange exchange,String teacherIdString) {
-
+    public static void findTeacherById(Connection connection, HttpServerExchange exchange) {
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String teacherIdString = pathMatch.getParameters().get("id");
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
             String[] columns = null;
             if (columnsDeque != null && !columnsDeque.isEmpty()) {
@@ -154,11 +157,11 @@ public class TeacherController {
 
 
     public static void updateTeacher(Connection connection, HttpServerExchange exchange) {
-        // Extracting the class ID from the URL path
-        Deque<String> teacherIdDeque = exchange.getQueryParameters().get("id");
-        if (teacherIdDeque != null && !teacherIdDeque.isEmpty()) {
-            String teacherIdString = teacherIdDeque.getFirst();
+        // Extracting the teacher ID from the URL path using PathTemplateMatch
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String teacherIdString = pathMatch.getParameters().get("id");
 
+        if (teacherIdString != null && !teacherIdString.trim().isEmpty()) {
             try {
                 int teacherId = Integer.parseInt(teacherIdString);
 
@@ -166,13 +169,11 @@ public class TeacherController {
                     Gson gson = new Gson();
                     JsonObject teacherData = gson.fromJson(requestBody, JsonObject.class);
 
-
                     String whereClause = "teacher_id = ?";
 
                     String result = GenericQueries.update(connection, "teachers", teacherData, whereClause, teacherId);
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     exchange1.getResponseSender().send(result);
-
                 });
             } catch (NumberFormatException e) {
                 String errorMessage = "Invalid Teacher ID: " + teacherIdString;
@@ -180,8 +181,8 @@ public class TeacherController {
                 exchange.getResponseSender().send(errorMessage);
             }
         } else {
-            // Handle the case where the "id" parameter is missing
-            String errorMessage = "Teacher ID is missing in the request URL.";
+            // Handle the case where the teacher ID is missing or empty
+            String errorMessage = "Teacher ID is missing or empty in the request URL.";
             System.out.println(errorMessage);
             exchange.getResponseSender().send(errorMessage);
         }

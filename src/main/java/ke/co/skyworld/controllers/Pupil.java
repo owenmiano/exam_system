@@ -1,23 +1,27 @@
-package org.example;
+package ke.co.skyworld.controllers;
 
+import ke.co.skyworld.queryBuilder.GenericQueries;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.sql.*;
-import java.util.*;
 
 import com.google.gson.JsonSyntaxException;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import io.undertow.util.PathTemplateMatch;
 import org.mindrot.jbcrypt.BCrypt;
 
-public class PupilController {
+public class Pupil {
     private static boolean isValidPhoneNumber(String phoneNumber) {
         String phoneNumberRegex = "^\\d{10}$";
         return phoneNumber != null && phoneNumber.matches(phoneNumberRegex);
     }
-    public static void findPupilById(Connection connection, HttpServerExchange exchange,String pupilIdString) {
+    public static void findPupilById(Connection connection, HttpServerExchange exchange) {
+        // Extracting the pupil ID from the URL path
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String pupilIdString = pathMatch.getParameters().get("id");
 
         try {
             int pupilId = Integer.parseInt(pupilIdString);
@@ -31,17 +35,19 @@ public class PupilController {
                     "cl.class_name"
             };
 
-            String table = "pupils p " +
-                    "JOIN class cl ON p.class_id = cl.class_id " ;
+            // Specify the table and any joins
+            String table = "pupils p JOIN class cl ON p.class_id = cl.class_id";
 
-            String whereClause = "pupils_id = ?";
+            String whereClause = "p.pupils_id = ?";
 
             Object[] values = new Object[]{pupilId};
 
             try {
+                // Execute the SELECT query
                 JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, values);
                 exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
 
+                // Send the result back to the client
                 exchange.getResponseSender().send(jsonArrayResult.toString());
             } catch (SQLException e) {
                 String errorMessage = "SQL Error occurred: " + e.getMessage();
@@ -49,15 +55,16 @@ public class PupilController {
                 exchange.getResponseSender().send(errorMessage);
             }
         } catch (NumberFormatException e) {
-            String errorMessage = "Invalid question ID format.";
+            // Handle invalid pupil ID format
+            String errorMessage = "Invalid Pupil ID format: " + pupilIdString;
             System.out.println(errorMessage);
             exchange.getResponseSender().send(errorMessage);
         } catch (Exception e) {
+            // Handle any other unexpected exceptions
             String errorMessage = "An error occurred: " + e.getMessage();
             System.out.println(errorMessage);
             exchange.getResponseSender().send(errorMessage);
         }
-
     }
 
     public static void findAll(Connection connection, HttpServerExchange exchange) {
@@ -136,11 +143,11 @@ public class PupilController {
     }
 
     public static void updatePupil(Connection connection, HttpServerExchange exchange) {
-        // Extracting the class ID from the URL path
-        Deque<String> pupilIdDeque = exchange.getQueryParameters().get("id");
-        if (pupilIdDeque != null && !pupilIdDeque.isEmpty()) {
-            String pupilIdString = pupilIdDeque.getFirst();
+        // Correctly extracting the pupil ID from the URL path using PathTemplateMatch
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String pupilIdString = pathMatch.getParameters().get("id");
 
+        if (pupilIdString != null && !pupilIdString.trim().isEmpty()) {
             try {
                 int pupilId = Integer.parseInt(pupilIdString);
 
@@ -148,7 +155,9 @@ public class PupilController {
                     Gson gson = new Gson();
                     JsonObject pupilData = gson.fromJson(requestBody, JsonObject.class);
 
-                    String whereClause = "pupils_id = ?";
+                    // Optionally, validate pupilData here
+
+                    String whereClause = "pupils_id = ?"; // Ensure the column name matches your database schema
 
                     String result = GenericQueries.update(connection, "pupils", pupilData, whereClause, pupilId);
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
@@ -161,8 +170,8 @@ public class PupilController {
                 exchange.getResponseSender().send(errorMessage);
             }
         } else {
-            // Handle the case where the "id" parameter is missing
-            String errorMessage = "Teacher ID is missing in the request URL.";
+            // Handle the case where the pupil ID is missing or empty
+            String errorMessage = "Pupil ID is missing or empty in the request URL.";
             System.out.println(errorMessage);
             exchange.getResponseSender().send(errorMessage);
         }

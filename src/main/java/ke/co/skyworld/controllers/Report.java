@@ -1,6 +1,7 @@
-package org.example;
+package ke.co.skyworld.controllers;
 
-import com.google.gson.Gson;
+import ke.co.skyworld.db.DatabaseConnectionManager;
+import ke.co.skyworld.queryBuilder.GenericQueries;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -13,6 +14,7 @@ import java.text.SimpleDateFormat;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import io.undertow.util.PathTemplateMatch;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -21,16 +23,18 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-public class ExamReport {
+public class Report {
 
     public static void generateExamsByTeacher(Connection connection, HttpServerExchange exchange) {
-        Deque<String> teacherIdDeque = exchange.getQueryParameters().get("teacherId");
-        if (teacherIdDeque == null || teacherIdDeque.isEmpty()) {
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String teacherIdString = pathMatch.getParameters().get("id");
+
+        if (teacherIdString == null || teacherIdString.isEmpty()) {
             exchange.getResponseSender().send("Teacher ID is required.");
             return;
         }
 
-        String teacherIdString = teacherIdDeque.getFirst();
+
         try {
             int teacherId = Integer.parseInt(teacherIdString);
             String[] columns = {
@@ -70,17 +74,18 @@ public class ExamReport {
 
 
     public static void generatePupilsAnswers(Connection connection, HttpServerExchange exchange) {
-        Deque<String> pupilIdDeque = exchange.getQueryParameters().get("pupil");
-        Deque<String> examSubjectDeque = exchange.getQueryParameters().get("examSubject");
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String subjectIdString = pathMatch.getParameters().get("id");
+        Deque<String> pupilIdDeque = exchange.getQueryParameters().get("pupilId");
 
-        if (pupilIdDeque == null || pupilIdDeque.isEmpty() || examSubjectDeque == null || examSubjectDeque.isEmpty()) {
+        if (pupilIdDeque == null || pupilIdDeque.isEmpty() || subjectIdString == null || subjectIdString.isEmpty()) {
             exchange.getResponseSender().send("Pupil ID and Exam Subject ID are required.");
             return;
         }
         try {
             int pupilId = Integer.parseInt(pupilIdDeque.getFirst());
-            int examSubject = Integer.parseInt(examSubjectDeque.getFirst());
-            String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
+            int examSubject = Integer.parseInt(subjectIdString);
+            String dbType= DatabaseConnectionManager.ConfigDetails.getDbType();
 
             String isCorrectColumn = dbType.equalsIgnoreCase("postgresql") ?
                     "CASE WHEN c.correct = true THEN 'correct' ELSE 'incorrect' END AS is_correct" :
@@ -91,21 +96,23 @@ public class ExamReport {
                     "CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END AS score";
 
             String[] columns = {
-                    "p.pupil_name AS pupil",
-                    "p.reg_no AS registration_number",
-                    "cl.class_name AS class",
-                    "s.subject_name AS subject",
-                    "e.exam_name AS exam",
+                    "p.pupil_name",
+                    "p.reg_no",
+                    "cl.class_name",
+                    "s.subject_name",
+                    "e.exam_name",
                     "q.question_no",
-                    "q.description AS question",
+                    "q.description",
                     "c.option_value AS chosen_answer",
+                    "cc.option_value AS correct_answer",
                     isCorrectColumn,
                     scoreColumn
             };
 
             String[][] joins = {
-                    {"INNER", "choices c", "a.choices_id = c.choices_id"},
                     {"INNER", "questions q", "a.questions_id = q.questions_id"},
+                    {"LEFT", "choices c", "a.choices_id = c.choices_id"},
+                    {"LEFT", "choices cc", "q.questions_id = cc.questions_id AND cc.correct = 1"}, // Correct answer
                     {"INNER", "exam_subjects es", "q.exam_subject_id = es.exam_subject_id"},
                     {"INNER", "exam e", "es.exam_id = e.exam_id"},
                     {"INNER", "subject s", "es.subject_id = s.subject_id"},
@@ -113,22 +120,41 @@ public class ExamReport {
                     {"INNER", "class cl", "p.class_id = cl.class_id"}
             };
 
+
             String whereClause = "p.pupils_id = ? AND es.exam_subject_id = ?";
             Object[] params = new Object[]{pupilId, examSubject};
             JsonArray answersReport = GenericQueries.select(connection, "answers a", joins, columns, whereClause, params);
-
+            System.out.println(answersReport);
+            JsonObject result = new JsonObject();
+            JsonArray questionsArray = new JsonArray();
             int totalScore = 0;
+
             for (int i = 0; i < answersReport.size(); i++) {
-                JsonObject answer = answersReport.get(i).getAsJsonObject();
-                int score = answer.has("score") ? answer.get("score").getAsInt() : 0;
-                totalScore += score;
+                JsonObject row = answersReport.get(i).getAsJsonObject();
+                if (i == 0) { // Initialize pupil details from the first row
+                    result.addProperty("pupil", row.get("pupil_name").getAsString());
+                    result.addProperty("reg_no", row.get("reg_no").getAsString());
+                    result.addProperty("class", row.get("class_name").getAsString());
+                    result.addProperty("subject", row.get("subject_name").getAsString());
+                    result.addProperty("exam", row.get("exam_name").getAsString());
+                }
+                JsonObject question = new JsonObject();
+                question.addProperty("question no", row.get("question_no").getAsInt());
+                question.addProperty("question", row.get("description").getAsString());
+                question.addProperty("chosen_answer", row.get("option_value").getAsString());
+                question.addProperty("is_correct", row.get("is_correct").getAsString());
+//                question.addProperty("correct_answer", row.get("option_value").getAsString());
+                question.addProperty("score", row.get("score").getAsInt());
+                questionsArray.add(question);
+
+                totalScore += row.get("score").getAsInt();
             }
 
-            JsonObject totalScoreObject = new JsonObject();
-            totalScoreObject.addProperty("total_score", totalScore);
-            answersReport.add(totalScoreObject);
+            result.add("questions", questionsArray);
+            result.addProperty("total_score", totalScore);
+
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-            exchange.getResponseSender().send(answersReport.toString());
+            exchange.getResponseSender().send(result.toString());
 
         } catch (SQLException e) {
             System.out.println("An error occurred: " + e.getMessage());
@@ -137,16 +163,17 @@ public class ExamReport {
     }
 
 
-    public static void generateTopPupilsByScore(Connection connection, HttpServerExchange exchange) {
-        Deque<String> examSubjectDeque = exchange.getQueryParameters().get("examSubject");
+    public static void generateTopFivePupils(Connection connection, HttpServerExchange exchange) {
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String subjectIdString = pathMatch.getParameters().get("id");
 
-        if (examSubjectDeque == null) {
-            exchange.getResponseSender().send("Exam Subject ID is required.");
+        if (subjectIdString == null) {
+            exchange.getResponseSender().send("Subject ID is required.");
             return;
         }
         try {
-            int examSubject = Integer.parseInt(examSubjectDeque.getFirst());
-            String dbType = DatabaseConnectionManager.DatabaseConfig.getDbType();
+            int examSubject = Integer.parseInt(subjectIdString);
+            String dbType = DatabaseConnectionManager.ConfigDetails.getDbType();
 
             String isCorrectColumn = dbType.equalsIgnoreCase("postgresql") ?
                     "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS total_score" :
@@ -203,14 +230,15 @@ public class ExamReport {
 
 
     public static void generatePupilScoreReport(Connection connection, HttpServerExchange exchange) {
-        Deque<String> examDeque = exchange.getQueryParameters().get("exam");
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String examIdString = pathMatch.getParameters().get("exam");
 
-        if (examDeque == null) {
+        if (examIdString == null) {
             exchange.getResponseSender().send("Exam ID is required.");
             return;
         }
-        int exam = Integer.parseInt(examDeque.getFirst());
-        String dbType= DatabaseConnectionManager.DatabaseConfig.getDbType();
+        int exam = Integer.parseInt(examIdString);
+        String dbType= DatabaseConnectionManager.ConfigDetails.getDbType();
         String scoreColumn = dbType.equalsIgnoreCase("postgresql") ?
                 "SUM(CASE WHEN c.correct = true THEN q.marks ELSE 0 END) AS score" :
                 "SUM(CASE WHEN c.correct = 1 THEN q.marks ELSE 0 END) AS score";
@@ -331,7 +359,7 @@ public class ExamReport {
             if (file.exists()) {
                 exchange.dispatch(() -> {
                     // Correctly configure the response headers before entering blocking mode.
-                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/octet-stream");
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                     exchange.getResponseHeaders().put(Headers.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getName() + "\"");
 
                     exchange.startBlocking();

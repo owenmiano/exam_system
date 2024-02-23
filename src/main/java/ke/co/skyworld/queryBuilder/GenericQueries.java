@@ -1,4 +1,4 @@
-package org.example;
+package ke.co.skyworld.queryBuilder;
 
 import java.sql.*;
 import java.util.*;

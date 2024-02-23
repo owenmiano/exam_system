@@ -1,18 +1,21 @@
-package org.example;
+package ke.co.skyworld.controllers;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import io.undertow.util.PathTemplateMatch;
+import ke.co.skyworld.queryBuilder.GenericQueries;
 
 import java.sql.*;
 import java.util.*;
 
-public class SubjectController {
+public class Subject {
 
-    public static void findSubjectById(Connection connection, HttpServerExchange exchange,String subjectIdString) {
+    public static void findSubjectById(Connection connection, HttpServerExchange exchange) {
             // Extracting the columns parameter from the query string
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String subjectIdString = pathMatch.getParameters().get("id");
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
             String[] columns = null;
             if (columnsDeque != null && !columnsDeque.isEmpty()) {
@@ -96,13 +99,13 @@ public class SubjectController {
         });
     }
 
-    //update class
+    //update subject
     public static void updateSubject(Connection connection, HttpServerExchange exchange) {
-        // Extracting the class ID from the URL path
-        Deque<String> subjectIdDeque = exchange.getQueryParameters().get("id");
-        if (subjectIdDeque != null && !subjectIdDeque.isEmpty()) {
-            String subjectIdString = subjectIdDeque.getFirst();
+        // Extracting the subject ID from the URL path using PathTemplateMatch
+        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+        String subjectIdString = pathMatch.getParameters().get("id");
 
+        if (subjectIdString != null && !subjectIdString.trim().isEmpty()) {
             try {
                 int subjectId = Integer.parseInt(subjectIdString);
 
@@ -119,7 +122,7 @@ public class SubjectController {
 
                     String whereClause = "subject_id = ?";
 
-                    String result = GenericQueries.update(connection, "subject", subjectData, whereClause, subjectId);
+                    String result = GenericQueries.update(connection, "subject", subjectData, whereClause, subjectId); // Ensure table name matches your database
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     exchange1.getResponseSender().send(result);
 
@@ -130,8 +133,8 @@ public class SubjectController {
                 exchange.getResponseSender().send(errorMessage);
             }
         } else {
-            // Handle the case where the "id" parameter is missing
-            String errorMessage = "Subject ID is missing in the request URL.";
+            // Handle the case where the subject ID is missing or empty
+            String errorMessage = "Subject ID is missing or empty in the request URL.";
             System.out.println(errorMessage);
             exchange.getResponseSender().send(errorMessage);
         }

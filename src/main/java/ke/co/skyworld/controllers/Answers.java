@@ -1,5 +1,6 @@
-package org.example;
+package ke.co.skyworld.controllers;
 
+import ke.co.skyworld.queryBuilder.GenericQueries;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpServerExchange;
@@ -8,7 +9,7 @@ import io.undertow.util.Headers;
 import java.sql.Connection;
 
 
-public class AnswersController {
+public class Answers {
     public static void createAnswer(Connection connection, HttpServerExchange exchange) {
         exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
             Gson gson = new Gson();
