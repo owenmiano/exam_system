@@ -8,11 +8,10 @@ import io.undertow.util.StatusCodes;
 public class InvalidMethod implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) {
-        exchange.setStatusCode(StatusCodes.OK);
+        exchange.setStatusCode(400);
 
-        //TODO: use JSON instead of plain text
 
-        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
         exchange.getResponseSender().send("Method " + exchange.getRequestMethod() + " not allowed");
     }
 }

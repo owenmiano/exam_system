@@ -1,5 +1,6 @@
 package ke.co.skyworld.db;
 
+import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.utils.ConfigFileChecker;
 
 import java.io.File;
@@ -10,7 +11,7 @@ public class ConnectDB {
     public static Connection initializeDatabase() {
         File configFile = ConfigFileChecker.getConfigFile(); // Ensure this method properly fetches your config file
         try {
-            DatabaseConnectionManager dbManager = new DatabaseConnectionManager(configFile);
+            ConfigReader dbManager = new ConfigReader(configFile);
             Connection connection = dbManager.getConnection();
             System.out.println("Database connected successfully");
             dbManager.createTables(connection);

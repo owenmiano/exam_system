@@ -12,9 +12,7 @@ public class FallBack implements HttpHandler {
 
         exchange.setStatusCode(StatusCodes.OK);
 
-        //TODO: use JSON instead of plain text
-
-        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
         exchange.getResponseSender().send("URI "+exchange.getRequestURI()+" not found on server");
     }
 }
