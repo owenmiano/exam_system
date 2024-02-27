@@ -8,7 +8,7 @@
         <password ENCRYPTED="yes">gf+WU1r+azfuGIJ27IhyLg==</password>
     </database>
     <api>
-        <host>localhost</host>
+        <host>172.20.94.25</host>
         <port>2000</port>
     </api>
 </configuration>
