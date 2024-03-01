@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.InsertQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 
@@ -19,33 +19,32 @@ public class CreateExamSchedules implements HttpHandler {
                 Gson gson = new Gson();
                 JsonObject examScheduleData = gson.fromJson(requestBody, JsonObject.class);
 
-                if (examScheduleData == null || !examScheduleData.has("exam_id") || examScheduleData.get("exam_id").getAsString().trim().isEmpty()) {
+                if (!examScheduleData.has("exam_id") || examScheduleData.get("exam_id").getAsInt() == 0) {
                     String errorMessage = "Exam ID is missing.";
-                    exchange.setStatusCode(404);
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400, errorMessage);
                     return;
                 }
-                if (examScheduleData == null || !examScheduleData.has("subject_id") || examScheduleData.get("subject_id").getAsString().trim().isEmpty()) {
+                if (!examScheduleData.has("subject_id") || examScheduleData.get("subject_id").getAsInt() == 0) {
                     String errorMessage = "Subject ID is missing.";
-                    exchange.setStatusCode(404); // Not Found
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400, errorMessage);
                     return;
                 }
-                if (examScheduleData == null || !examScheduleData.has("teacher_id") || examScheduleData.get("teacher_id").getAsString().trim().isEmpty()) {
+                if (!examScheduleData.has("teacher_id") || examScheduleData.get("teacher_id").getAsInt() == 0) {
                     String errorMessage = "Teacher ID is missing.";
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400, errorMessage);
                     return;
                 }
 
-
-                String insertionResult = GenericQueries.insertData(connection, "exam_subjects", examScheduleData);
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                exchange.getResponseSender().send(insertionResult);
+                String insertMessage = InsertQuery.insertData(connection, "exam_subjects", examScheduleData);
+                if (insertMessage.startsWith("Error")) {
+                    Response.Message(exchange, 500, insertMessage);
+                } else {
+                    Response.Message(exchange, 200, insertMessage);
+                }
             });
 
         }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

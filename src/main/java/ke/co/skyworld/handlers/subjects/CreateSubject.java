@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.InsertQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 
@@ -21,19 +21,20 @@ public class CreateSubject implements HttpHandler {
 
                 if (subjectData == null || !subjectData.has("subject_name") || subjectData.get("subject_name").getAsString().trim().isEmpty()) {
                     String errorMessage = "Subject name is missing.";
-                    exchange.setStatusCode(404);
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400, errorMessage);
                     return;
                 }
 
-                String insertionResult = GenericQueries.insertData(connection, "subject", subjectData);
-                System.out.println(insertionResult);
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                exchange1.getResponseSender().send(insertionResult);
+                String insertMessage = InsertQuery.insertData(connection, "subject", subjectData);
+                if (insertMessage.startsWith("Error")) {
+                    Response.Message(exchange, 500, insertMessage);
+                } else {
+                    Response.Message(exchange, 200, insertMessage);
+                }
+
             });
         }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

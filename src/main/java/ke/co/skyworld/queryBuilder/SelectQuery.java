@@ -1,64 +1,14 @@
 package ke.co.skyworld.queryBuilder;
 
-import java.sql.*;
-import java.util.*;
-
 import com.google.gson.*;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.lang.reflect.Type;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.util.StringJoiner;
+import java.time.format.DateTimeFormatter;
 
-public class GenericQueries {
-    //  insert global method
-    public static String insertData(Connection connection, String tableName, JsonObject data) {
-        StringJoiner columnNames = new StringJoiner(", ");
-        StringJoiner placeholders = new StringJoiner(", ");
-
-        for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
-            columnNames.add(entry.getKey());
-            placeholders.add("?");
-        }
-
-        String sql = "INSERT INTO " + tableName + " (" + columnNames.toString() + ") VALUES (" + placeholders.toString() + ")";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-
-            int index = 1;
-            for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
-                JsonElement value = entry.getValue();
-                // Convert JsonElement to appropriate Java object
-                if (value.isJsonPrimitive()) {
-                    if (value.getAsJsonPrimitive().isNumber()) {
-                        pstmt.setObject(index++, value.getAsInt()); // Use getAsInt() for numeric values
-                    } else if (value.getAsJsonPrimitive().isBoolean()) {
-                        pstmt.setObject(index++, value.getAsBoolean());
-                    } else if (value.getAsJsonPrimitive().isString()) {
-                        pstmt.setObject(index++, value.getAsString());
-                    } else {
-                        pstmt.setObject(index++, null);
-                    }
-                } else if (value.isJsonNull()) {
-                    pstmt.setObject(index++, null);
-                } else {
-                    // For JsonArray or JsonObject, convert to String or handle differently
-                    pstmt.setObject(index++, value.toString());
-                }
-            }
-            int affectedRows = pstmt.executeUpdate();
-            if (affectedRows > 0) {
-                return "Data inserted successfully";
-            } else {
-                return "Failed to insert data";
-            }
-        } catch (SQLException e) {
-            return "Error: " + e.getMessage();
-        }
-    }
-
-
-
-
-    // select global method
+public class SelectQuery {
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new JsonSerializer<LocalDateTime>() {
                 @Override
@@ -119,6 +69,7 @@ public class GenericQueries {
         return querySelect(conn, "SELECT " + columnList + " FROM " + table + " WHERE " + where, params);
     }
 
+
     // Select with WHERE clause and GROUP BY
     public static JsonArray select(Connection conn, String table, String where, String groupBy, Object... params) throws SQLException {
         return querySelect(conn, "SELECT * FROM " + table + " WHERE " + where + " GROUP BY " + groupBy, params);
@@ -131,9 +82,12 @@ public class GenericQueries {
     }
 
     // Select with LIMIT and OFFSET
-    public static JsonArray select(Connection conn, String table, int limit, int offset) throws SQLException {
-        return querySelect(conn, "SELECT * FROM " + table + " LIMIT " + limit + " OFFSET " + offset);
+    public static JsonArray select(Connection conn, String table,String[] columns, int limit, int offset) throws SQLException {
+        String columnList = String.join(", ", columns);
+        return querySelect(conn, "SELECT " + columnList +  " FROM " + table + " LIMIT " + limit + " OFFSET " + offset);
     }
+
+
 
     //select with join
     public static JsonArray select(Connection conn, String baseTable, String[][] joins, String[] columns) throws SQLException {
@@ -259,66 +213,5 @@ public class GenericQueries {
 
         return querySelect(conn, query.toString(), params);
     }
-
-
-    // Global update method
-    public static String update(Connection conn, String table, JsonObject updates, String where, Object... whereParams) {
-        try {
-            // Constructing the SET clause
-            StringJoiner setClauses = new StringJoiner(", ");
-            for (Map.Entry<String, JsonElement> entry : updates.entrySet()) {
-                setClauses.add(entry.getKey() + " = ?");
-            }
-
-          // Add date_modified to be updated to the current timestamp
-            setClauses.add("date_modified = CURRENT_TIMESTAMP");
-            // Building the SQL query
-            String sql = "UPDATE " + table + " SET " + setClauses;
-
-            // If where clause is provided, add it to the SQL statement
-            if (where != null && !where.isEmpty()) {
-                sql += " WHERE " + where;
-            }
-
-            // Executing the update
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                int index = 1;
-
-                // Setting values for the columns to be updated
-                for (Map.Entry<String, JsonElement> entry : updates.entrySet()) {
-                    JsonElement value = entry.getValue();
-                    // Convert JsonElement to appropriate Java object
-                    if (value.isJsonPrimitive()) {
-                        pstmt.setObject(index++, value.getAsString());
-                    } else if (value.isJsonNull()) {
-                        pstmt.setNull(index++, java.sql.Types.NULL);
-                    } else {
-                        pstmt.setString(index++, value.toString());
-                    }
-                }
-
-                // Setting values for the WHERE clause parameters
-                if (whereParams != null) {
-                    for (Object param : whereParams) {
-                        pstmt.setObject(index++, param);
-                    }
-                }
-
-                int affectedRows = pstmt.executeUpdate();
-                if (affectedRows > 0) {
-                    return "Data updated successfully";
-                } else {
-                    return "No data updated";
-                }
-            }
-        } catch (SQLException e) {
-            return "Error: " + e.getMessage();
-        }
-    }
-
-
-
-
-
 
 }

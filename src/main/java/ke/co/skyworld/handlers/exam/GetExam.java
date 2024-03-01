@@ -1,12 +1,14 @@
 package ke.co.skyworld.handlers.exam;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -21,6 +23,12 @@ public class GetExam implements HttpHandler {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String examIdString = pathMatch.getParameters().get("examId");
 
+            if (examIdString == null || examIdString.isEmpty()) {
+                String errorMessage = "Exam ID must be provided.";
+                Response.Message(exchange, 400, errorMessage);
+                return;
+
+            }
             String[] columns = {
                     "e.exam_name",
                     "cl.class_name"
@@ -29,27 +37,35 @@ public class GetExam implements HttpHandler {
             String table = "exam e " +
                     "JOIN class cl ON e.class_id = cl.class_id " ;
 
+
                 int examId = Integer.parseInt(examIdString);
 
                 exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                     String whereClause = "exam_id = ?";
 
                     try {
-                        JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, examId);
+                        JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns, whereClause, examId);
                         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+
                         if (jsonArrayResult.size() == 0) {
-                            exchange.setStatusCode(404); // Not Found
-                            exchange.getResponseSender().send("Exam not found.");
+                            String errorMessage = "Exam not found";
+                            Response.Message(exchange, 404, errorMessage);
+                        } else if (jsonArrayResult.size() == 1) {
+                            JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                            exchange.setStatusCode(200);
+                            exchange.getResponseSender().send(jsonObjectResult.toString());
                         } else {
+                            exchange.setStatusCode(200);
                             exchange.getResponseSender().send(jsonArrayResult.toString());
                         }
+
                     } catch (SQLException e) {
-                        String errorMessage = "SQL Error occurred: " + e.getMessage();
-                        System.out.println(errorMessage);
-                        exchange1.getResponseSender().send(errorMessage);
+                        Response.Message(exchange, 500,  e.getMessage());
                     }
                 });
 
+        }catch (Exception e){
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
                 connection.close();

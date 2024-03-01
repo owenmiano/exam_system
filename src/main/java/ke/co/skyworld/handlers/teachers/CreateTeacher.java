@@ -4,13 +4,13 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
+import ke.co.skyworld.queryBuilder.InsertQuery;
+import ke.co.skyworld.utils.Response;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
 import java.util.regex.Pattern;
-import ke.co.skyworld.queryBuilder.GenericQueries;
 
 public class CreateTeacher implements HttpHandler {
     private static boolean isValidEmail(String email) {
@@ -37,18 +37,15 @@ public class CreateTeacher implements HttpHandler {
                 Gson gson = new Gson();
                 JsonObject teacherData = gson.fromJson(requestBody, JsonObject.class);
 
-                if (teacherData == null) {
-                    String errorMessage = "Teacher data is missing or incomplete.";
-                    System.out.println(errorMessage);
-                    exchange1.getResponseSender().send(errorMessage);
-                    return;
-                }
 
                 if (!teacherData.has("password")) {
                     String errorMessage = "Password is missing.";
-                    System.out.println(errorMessage);
-                    exchange1.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400,  errorMessage);
                     return;
+                }
+                if (!teacherData.has("teacher_name")) {
+                    String errorMessage = "Teacher name is missing.";
+                    Response.Message(exchange, 400,  errorMessage);
                 }
 
                 String plainPassword = teacherData.get("password").getAsString();
@@ -61,33 +58,29 @@ public class CreateTeacher implements HttpHandler {
 
                 if (!isValidEmail(emailAddress)) {
                     String errorMessage = "Invalid email address.";
-                    System.out.println(errorMessage);
-                    exchange1.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400,  errorMessage);
                     return;
                 }
 
                 if (!isValidIDNumber(idNumber)) {
                     String errorMessage = "Invalid ID number.";
-                    System.out.println(errorMessage);
-                    exchange1.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400,  errorMessage);
                     return;
                 }
 
                 if (!isValidPhoneNumber(phone)) {
                     String errorMessage = "Invalid phone number.";
-                    System.out.println(errorMessage);
-                    exchange1.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 400,  errorMessage);
                     return;
                 }
-                String insertionResult = GenericQueries.insertData(connection, "teachers", teacherData);
-
-                System.out.println(insertionResult);
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                exchange1.getResponseSender().send(insertionResult);
+                String insertMessage = InsertQuery.insertData(connection, "teachers", teacherData);
+                if (insertMessage.startsWith("Error")) {
+                    Response.Message(exchange, 500, insertMessage);
+                } else {
+                    Response.Message(exchange, 200, insertMessage);
+                }
             } catch (Exception e) {
-                String errorMessage = "Error processing request: " + e.getMessage();
-                System.out.println(errorMessage);
-                exchange1.getResponseSender().send(errorMessage);
+                Response.Message(exchange, 500,  e.getMessage());
             }
         });
     }finally {

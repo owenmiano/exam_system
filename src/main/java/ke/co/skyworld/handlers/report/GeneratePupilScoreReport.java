@@ -9,7 +9,8 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -32,7 +33,7 @@ public class GeneratePupilScoreReport implements HttpHandler {
             String examIdString = pathMatch.getParameters().get("examId");
 
             if (examIdString == null) {
-                exchange.getResponseSender().send("Exam ID is required.");
+                Response.Message(exchange, 400,"Exam ID is required.");
                 return;
             }
             int exam = Integer.parseInt(examIdString);
@@ -63,7 +64,7 @@ public class GeneratePupilScoreReport implements HttpHandler {
 
                 Object[] params = new Object[]{exam};
 
-                JsonArray aggregatedResults = GenericQueries.select(connection, "pupils p", joins, columns, where, groupBy,params);
+                JsonArray aggregatedResults = SelectQuery.select(connection, "pupils p", joins, columns, where, groupBy,params);
 
                 Map<String, Map<String, Integer>> pupilScoresMap = new LinkedHashMap<>();
                 for (JsonElement element : aggregatedResults) {
@@ -76,12 +77,12 @@ public class GeneratePupilScoreReport implements HttpHandler {
                     pupilScoresMap.computeIfAbsent(pupilName, k -> new LinkedHashMap<>()).put(subjectName, score);
                 }
                 String className = "";
-                if (aggregatedResults.size() > 0) {
+                if (aggregatedResults.isEmpty()) {
                     JsonObject jsonObject = aggregatedResults.get(0).getAsJsonObject();
                     className = jsonObject.get("class_name").getAsString();
                 }
                 String examName = "";
-                if (aggregatedResults.size() > 0) {
+                if (aggregatedResults.isEmpty()) {
                     JsonObject jsonObject = aggregatedResults.get(0).getAsJsonObject();
                     examName = jsonObject.get("exam_name").getAsString();
                 }
@@ -171,20 +172,15 @@ public class GeneratePupilScoreReport implements HttpHandler {
                             }
                             outputStream.flush(); // Make sure all data is sent.
                         } catch (IOException e) {
-                            e.printStackTrace();
-                            exchange.setStatusCode(500);
-                            exchange.getResponseSender().send("Error occurred while sending the report.");
+                            Response.Message(exchange, 500,  e.getMessage());
                         }
                     });
                 } else {
-                    exchange.setStatusCode(404);
-                    exchange.getResponseSender().send("Report file not found.");
+                    Response.Message(exchange, 400,"Report file not found.");
                 }
 
             } catch (SQLException | IOException e) {
-                e.printStackTrace();
-                exchange.setStatusCode(500);
-                exchange.getResponseSender().send("Error: "+e.getMessage());
+                Response.Message(exchange, 500,  e.getMessage());
             }
         }
         finally {

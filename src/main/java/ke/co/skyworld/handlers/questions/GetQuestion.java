@@ -7,11 +7,11 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,8 +26,7 @@ public class GetQuestion implements HttpHandler {
             String questionIdString = pathMatch.getParameters().get("questionId");
 
             if (examSubjectIdString == null || examSubjectIdString.isEmpty() || questionIdString == null || questionIdString.isEmpty()) {
-                exchange.setStatusCode(400);
-                exchange.getResponseSender().send("Both examSubjectId and questionId are required.");
+                Response.Message(exchange, 400, "Both examSubjectId and questionId are required.");
                 return;
             }
             try {
@@ -55,8 +54,7 @@ public class GetQuestion implements HttpHandler {
                 Object[] values = new Object[]{examsubjectId,questionId};
 
                 try {
-                    JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns,whereClause,values);
-
+                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns,whereClause,values);
                     // New aggregation logic
                     Map<Integer, JsonObject> questionMap = new HashMap<>();
                     for (int i = 0; i < jsonArrayResult.size(); i++) {
@@ -96,21 +94,13 @@ public class GetQuestion implements HttpHandler {
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     exchange.getResponseSender().send(aggregatedQuestions.toString());
                 } catch (SQLException e) {
-                    String errorMessage = "SQL Error occurred: " + e.getMessage();
-                    System.out.println(errorMessage);
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 500,  e.getMessage());
                 }
             } catch (Exception e) {
-                String errorMessage = "An error occurred: " + e.getMessage();
-                System.out.println(errorMessage);
-                exchange.getResponseSender().send(errorMessage);
+                Response.Message(exchange, 500,  e.getMessage());
             }
-        }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
         }finally {
             if (connection != null) {
-
                 connection.close();
             }
         }

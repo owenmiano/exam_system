@@ -9,7 +9,8 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -25,8 +26,7 @@ public class GenerateTopFivePupils implements HttpHandler {
             String examsubjectIdString = pathMatch.getParameters().get("examSubjectId");
 
             if (examsubjectIdString == null) {
-                exchange.setStatusCode(400);
-                exchange.getResponseSender().send("Exam Subject ID is required.");
+                Response.Message(exchange, 400,"Exam Subject ID is required.");
                 return;
             }
             try {
@@ -60,7 +60,7 @@ public class GenerateTopFivePupils implements HttpHandler {
                 Object[] values = new Object[]{examSubject};
 
                 String groupBy = "p.pupil_name, e.exam_name, s.subject_name, p.reg_no, cl.class_name"; // Define your GROUP BY clause here
-                JsonArray aggregatedResults = GenericQueries.select(connection, "answers a", joins, columns, whereClause,groupBy,values);
+                JsonArray aggregatedResults = SelectQuery.select(connection, "answers a", joins, columns, whereClause,groupBy,values);
 
                 List<JsonObject> pupilsList = new ArrayList<>();
                 for (JsonElement element : aggregatedResults) {
@@ -81,10 +81,10 @@ public class GenerateTopFivePupils implements HttpHandler {
                 exchange.getResponseSender().send(topFivePupils.toString());
 
             } catch (SQLException e) {
-                e.printStackTrace();
-                exchange.setStatusCode(500);
-                exchange.getResponseSender().send("Error: "+e.getMessage());
+                Response.Message(exchange, 500,  e.getMessage());
             }
+        }catch (Exception e) {
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

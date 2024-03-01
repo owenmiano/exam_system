@@ -22,16 +22,16 @@ public class RestAPIServer {
             String BASE_REST_API_URL = "/api/rest";
 
             PathHandler pathHandler = Handlers.path()
-                    .addPrefixPath(BASE_REST_API_URL + "/class", Routes.Class())
-                    .addPrefixPath(BASE_REST_API_URL + "/pupil", Routes.Pupil())
-                    .addPrefixPath(BASE_REST_API_URL + "/teacher", Routes.Teacher())
-                    .addPrefixPath(BASE_REST_API_URL + "/subject", Routes.Subject())
-                    .addPrefixPath(BASE_REST_API_URL + "/exam", Routes.Exam())
-                    .addPrefixPath(BASE_REST_API_URL + "/exam-schedule", Routes.ExamSchedule())
-                    .addPrefixPath(BASE_REST_API_URL + "/question", Routes.Question())
+                    .addPrefixPath(BASE_REST_API_URL + "/classes", Routes.Class())
+                    .addPrefixPath(BASE_REST_API_URL + "/pupils", Routes.Pupil())
+                    .addPrefixPath(BASE_REST_API_URL + "/teachers", Routes.Teacher())
+                    .addPrefixPath(BASE_REST_API_URL + "/subjects", Routes.Subject())
+                    .addPrefixPath(BASE_REST_API_URL + "/exams", Routes.Exam())
+                    .addPrefixPath(BASE_REST_API_URL + "/exam-schedules", Routes.ExamSchedule())
+                    .addPrefixPath(BASE_REST_API_URL + "/questions", Routes.Question())
                     .addPrefixPath(BASE_REST_API_URL + "/choices", Routes.Choice())
-                    .addPrefixPath(BASE_REST_API_URL + "/answer", Routes.Answers())
-                    .addPrefixPath(BASE_REST_API_URL + "/report", Routes.Report());
+                    .addPrefixPath(BASE_REST_API_URL + "/answers", Routes.Answers())
+                    .addPrefixPath(BASE_REST_API_URL + "/reports", Routes.Report());
 
             Undertow server = Undertow.builder()
                     .setServerOption(UndertowOptions.DECODE_URL, true)

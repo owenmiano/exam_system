@@ -6,7 +6,8 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -20,7 +21,7 @@ public class GenerateExamsByTeacher implements HttpHandler {
             String teacherIdString = pathMatch.getParameters().get("teacherId");
 
             if (teacherIdString == null || teacherIdString.isEmpty()) {
-                exchange.getResponseSender().send("Teacher ID is required.");
+                Response.Message(exchange, 400, "Teacher ID is required.");
                 return;
             }
 
@@ -45,17 +46,17 @@ public class GenerateExamsByTeacher implements HttpHandler {
                 String whereClause = "t.teacher_id = ?";
                 Object[] values = new Object[]{teacherId};
 
-                JsonArray jsonArrayResult = GenericQueries.select(connection, "exam e", joins, columns, whereClause, values);
+                JsonArray jsonArrayResult = SelectQuery.select(connection, "exam e", joins, columns, whereClause, values);
                 String jsonResult = jsonArrayResult.toString();
 
                 exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                 exchange.getResponseSender().send(jsonResult);
 
-            } catch (NumberFormatException e) {
-                exchange.getResponseSender().send("Invalid Teacher ID: " + teacherIdString);
-            } catch (SQLException e) {
-                exchange.getResponseSender().send("SQL Error occurred: " + e.getMessage());
+            }  catch (SQLException e) {
+                Response.Message(exchange, 500,  e.getMessage());
             }
+        }catch (Exception e) {
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

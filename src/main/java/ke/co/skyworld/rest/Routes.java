@@ -89,7 +89,7 @@ public class Routes {
                 .post( "", new Dispatcher(new BlockingHandler(new CreateQuestion())))
                 .put( "/{questionId}",new Dispatcher(new BlockingHandler(new UpdateQuestion())))
                 .get( "/{examSubjectId}/{questionId}", new Dispatcher(new GetQuestion()))
-                .get("/{examSubjectId}",new Dispatcher(new GetQuestions()))
+                .get("",new Dispatcher(new GetQuestions()))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }

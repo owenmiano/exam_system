@@ -1,12 +1,14 @@
 package ke.co.skyworld.handlers.examSchedules;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -19,11 +21,15 @@ public class GetExamSchedule implements HttpHandler {
             // Extracting the exam schedule ID from the URL path using PathTemplateMatch
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String examScheduleIdString = pathMatch.getParameters().get("examScheduleId");
+            if (examScheduleIdString == null || examScheduleIdString.isEmpty()) {
+                String errorMessage = "Exam Schedule ID must be provided.";
+                Response.Message(exchange, 400, errorMessage);
+                return;
 
+            }
             try {
                 int examScheduleId = Integer.parseInt(examScheduleIdString);
                 String[] columns = {
-                        "e.exam_id",
                         "e.exam_name",
                         "es.exam_duration",
                         "es.exam_date",
@@ -43,22 +49,26 @@ public class GetExamSchedule implements HttpHandler {
                 Object[] values = new Object[]{examScheduleId};
 
                 try {
-                    JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, values);
+                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns, whereClause, values);
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     if (jsonArrayResult.size() == 0) {
-                        exchange.setStatusCode(404); // Not Found
-                        exchange.getResponseSender().send("Exam schedule not found.");
+                        String errorMessage = "Exam schedule not found";
+                        Response.Message(exchange, 404, errorMessage);
+                    } else if (jsonArrayResult.size() == 1) {
+                        JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                        exchange.setStatusCode(200);
+                        exchange.getResponseSender().send(jsonObjectResult.toString());
                     } else {
+                        exchange.setStatusCode(200);
                         exchange.getResponseSender().send(jsonArrayResult.toString());
                     }
+
                 } catch (SQLException e) {
-                    exchange.setStatusCode(500);
-                    exchange.getResponseSender().send("Error: "+e.getMessage());
+                    Response.Message(exchange, 500,  e.getMessage());
                 }
             }  catch (Exception e) {
                 // Handle any other unexpected exceptions
-                exchange.setStatusCode(500);
-                exchange.getResponseSender().send("Error: "+e.getMessage());
+                Response.Message(exchange, 500,  e.getMessage());
             }
         }finally {
             if (connection != null) {

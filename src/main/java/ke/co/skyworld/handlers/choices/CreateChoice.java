@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.InsertQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 
@@ -20,26 +20,24 @@ public class CreateChoice implements HttpHandler {
                 JsonObject choiceData = gson.fromJson(requestBody, JsonObject.class);
 
                 if (!choiceData.has("option_label") || choiceData.get("option_label").isJsonNull()) {
-                    exchange.setStatusCode(400);
-                    exchange.getResponseSender().send("Option label is required");
+                    Response.Message(exchange, 400, "Option label is required");
                     return;
                 }
 
                 if (!choiceData.has("option_value") ||  choiceData.get("option_value").getAsString().trim().isEmpty()) {
-                    exchange.setStatusCode(400);
-                    exchange.getResponseSender().send("Option value is required");
+                    Response.Message(exchange, 400, "Option value is required");
                     return;
                 }
 
-
-                String insertionResult = GenericQueries.insertData(connection, "choices", choiceData);
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                exchange1.getResponseSender().send(insertionResult);
+                String insertMessage = InsertQuery.insertData(connection, "choices", choiceData);
+                if (insertMessage.startsWith("Error")) {
+                    Response.Message(exchange, 500, insertMessage);
+                } else {
+                    Response.Message(exchange, 200, insertMessage);
+                }
             });
         }catch (Exception e){
-            e.printStackTrace();
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

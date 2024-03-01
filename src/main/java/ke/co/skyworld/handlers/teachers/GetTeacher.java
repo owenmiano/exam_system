@@ -1,16 +1,17 @@
 package ke.co.skyworld.handlers.teachers;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Deque;
 
 public class GetTeacher implements HttpHandler {
     @Override
@@ -20,6 +21,11 @@ public class GetTeacher implements HttpHandler {
         try {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String teacherIdString = pathMatch.getParameters().get("teacherId");
+            if (teacherIdString == null || teacherIdString.isEmpty()) {
+                String errorMessage = "Teacher ID must be provided.";
+                Response.Message(exchange, 400, errorMessage);
+                return;
+            }
 
             String[] columns = {
                     "t.teacher_name",
@@ -42,25 +48,26 @@ public class GetTeacher implements HttpHandler {
                 String whereClause = "teacher_id = ?";
 
                 try {
-                    JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, teacherId);
+                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns, whereClause, teacherId);
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+
                     if (jsonArrayResult.size() == 0) {
-                        exchange.setStatusCode(404); // Not Found
-                        exchange.getResponseSender().send("Teacher not found.");
+                        String errorMessage = "Teacher not found";
+                        Response.Message(exchange, 404, errorMessage);
+                    } else if (jsonArrayResult.size() == 1) {
+                        JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                        exchange.setStatusCode(200);
+                        exchange.getResponseSender().send(jsonObjectResult.toString());
                     } else {
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                        exchange.setStatusCode(200);
                         exchange.getResponseSender().send(jsonArrayResult.toString());
                     }
                 } catch (SQLException e) {
-                    String errorMessage = "SQL Error occurred: " + e.getMessage();
-                    System.out.println(errorMessage);
-                    exchange1.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 500,  e.getMessage());
                 }
             });
         }catch (Exception e){
-            e.printStackTrace();
-
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

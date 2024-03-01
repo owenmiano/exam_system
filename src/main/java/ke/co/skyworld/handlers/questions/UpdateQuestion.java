@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.UpdateQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.util.Deque;
@@ -28,21 +28,21 @@ public class UpdateQuestion implements HttpHandler {
 
                         String whereClause = "questions_id = ?";
 
-                        String result = GenericQueries.update(connection, "questions", questionData, whereClause, questionId);
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                        exchange.getResponseSender().send(result);
-
+                        String updateMessage = UpdateQuery.update(connection, "questions", questionData, whereClause, questionId);
+                        if (updateMessage.startsWith("Error")) {
+                            Response.Message(exchange, 500, updateMessage);
+                        } else {
+                            Response.Message(exchange, 200, updateMessage);
+                        }
                     });
 
             } else {
                 // Handle the case where the "id" parameter is missing
                 String errorMessage = "Question ID is missing in the request URL.";
-                System.out.println(errorMessage);
-                exchange.getResponseSender().send(errorMessage);
+                Response.Message(exchange, 400, errorMessage);
             }
         }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 500, e.getMessage());
         }finally {
             if (connection != null) {
 

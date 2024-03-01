@@ -1,12 +1,14 @@
 package ke.co.skyworld.handlers.subjects;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -38,24 +40,27 @@ public class GetSubject implements HttpHandler {
                     String whereClause = "subject_id = ?";
 
                     try {
-                        JsonArray jsonArrayResult = GenericQueries.select(connection, "subject", finalColumns, whereClause, subjectId);
+                        JsonArray jsonArrayResult = SelectQuery.select(connection, "subject", finalColumns, whereClause, subjectId);
                         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+
                         if (jsonArrayResult.size() == 0) {
-                            exchange.setStatusCode(404); // Not Found
-                            exchange.getResponseSender().send("Subject not found.");
+                            String errorMessage = "Subject not found";
+                            Response.Message(exchange, 404, errorMessage);
+                        } else if (jsonArrayResult.size() == 1) {
+                            JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                            exchange.setStatusCode(200);
+                            exchange.getResponseSender().send(jsonObjectResult.toString());
                         } else {
+                            exchange.setStatusCode(200);
                             exchange.getResponseSender().send(jsonArrayResult.toString());
                         }
                     } catch (SQLException e) {
-                        String errorMessage = "SQL Error occurred: " + e.getMessage();
-                        exchange.setStatusCode(500);
-                        exchange1.getResponseSender().send(errorMessage);
+                        Response.Message(exchange, 500,  e.getMessage());
                     }
                 });
 
         }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send(e.getMessage());
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

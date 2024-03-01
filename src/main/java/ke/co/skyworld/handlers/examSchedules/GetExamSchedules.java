@@ -1,14 +1,19 @@
 package ke.co.skyworld.handlers.examSchedules;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Pagination;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Deque;
+import java.util.StringJoiner;
 
 public class GetExamSchedules implements HttpHandler {
     @Override
@@ -16,35 +21,76 @@ public class GetExamSchedules implements HttpHandler {
         Connection connection = ConnectDB.initializeDatabase();
         try {
             // Extracting the columns parameter from the query string
-            String[] columns = {
-                    "e.exam_id",
-                    "e.exam_name",
-                    "es.exam_duration",
-                    "es.exam_date",
-                    "t.teacher_name",
-                    "s.subject_name",
-                    "cl.class_name"
-            };
+            Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
+            String[] columns = (columnsDeque != null && !columnsDeque.isEmpty()) ? columnsDeque.getFirst().split(",") : new String[]{"*"};
+
+            StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
+            Deque<String> filterDeque = exchange.getQueryParameters().get("filter");
+
+            if (filterDeque != null && !filterDeque.isEmpty()) {
+                for (String filter : filterDeque) {
+                    // Splitting each filter into its components: field, operation, and value
+                    String[] parts = filter.split(":", 3);
+                    if (parts.length == 3) {
+                        String field = parts[0];
+                        String operation = parts[1];
+                        String value = parts[2];
+
+                        switch (operation) {
+                            case "like":
+                                whereClauseJoiner.add(field + " LIKE '%" + value + "%'");
+                                break;
+                            case "eq":
+                                whereClauseJoiner.add(field + " = '" + value + "'");
+                                break;
+                            case "begins":
+                                whereClauseJoiner.add(field + " LIKE '" + value + "%'");
+                                break;
+                            case "ends":
+                                whereClauseJoiner.add(field + " LIKE '%" + value + "'");
+                                break;
+
+                        }
+                    }
+                }
+            }
+
+            String whereClause = whereClauseJoiner.toString();
+
 
             String table = "exam_subjects es " +
                     "JOIN exam e ON e.exam_id = es.exam_id " +
                     "JOIN teachers t ON es.teacher_id = t.teacher_id " +
                     "JOIN subject s ON es.subject_id = s.subject_id " +
                     "JOIN class cl ON e.class_id = cl.class_id";
-            exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+
+            if (!whereClause.isEmpty()) {
+                table += " WHERE " + whereClause;
+            }
 
                 try {
-                    JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns);
+                    Pagination pagination = new Pagination(exchange);
+
+                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns, pagination.getPageSize(), pagination.calculateOffset());
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                    exchange1.getResponseSender().send(jsonArrayResult.toString());
+
+                    if (jsonArrayResult.size() == 0) {
+                        String errorMessage = "No exam schedules";
+                        Response.Message(exchange, 404, errorMessage);
+                    } else if (jsonArrayResult.size() == 1) {
+                        JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                        exchange.setStatusCode(200);
+                        exchange.getResponseSender().send(jsonObjectResult.toString());
+                    } else {
+                        exchange.setStatusCode(200);
+                        exchange.getResponseSender().send(jsonArrayResult.toString());
+                    }
+
                 } catch (SQLException e) {
-                    exchange.setStatusCode(500);
-                    exchange.getResponseSender().send("Error: "+e.getMessage());
+                    Response.Message(exchange, 500, e.getMessage());
                 }
-            });
         }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 500, e.getMessage());
         }finally {
             if (connection != null) {
 

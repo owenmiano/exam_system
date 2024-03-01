@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.InsertQuery;
+import ke.co.skyworld.utils.Response;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
@@ -26,12 +26,17 @@ public class CreatePupil implements HttpHandler {
                     Gson gson = new Gson();
                     JsonObject pupilData = gson.fromJson(requestBody, JsonObject.class);
 
-                    if (!pupilData.has("password")) {
-                        String errorMessage = "Password is missing.";
-                        exchange.setStatusCode(404);
-                        exchange1.getResponseSender().send(errorMessage);
+                    if (!pupilData.has("pupil_name")) {
+                        String errorMessage = "Pupil name is missing.";
+                        Response.Message(exchange, 400,  errorMessage);
                         return;
                     }
+                    if (!pupilData.has("password")) {
+                        String errorMessage = "Password is missing.";
+                        Response.Message(exchange, 400,  errorMessage);
+                        return;
+                    }
+
 
                     String plainPassword = pupilData.get("password").getAsString();
                     String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
@@ -41,17 +46,17 @@ public class CreatePupil implements HttpHandler {
 
                     if (!isValidPhoneNumber(phone)) {
                         String errorMessage = "Invalid phone number.";
-                        exchange.setStatusCode(404);
-                        exchange1.getResponseSender().send(errorMessage);
+                        Response.Message(exchange, 400,  errorMessage);
                         return;
                     }
-                    String insertionResult = GenericQueries.insertData(connection, "pupils", pupilData);
-                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                    exchange1.getResponseSender().send(insertionResult);
+                    String insertMessage = InsertQuery.insertData(connection, "pupils", pupilData);
+                    if (insertMessage.startsWith("Error")) {
+                        Response.Message(exchange, 500, insertMessage);
+                    } else {
+                        Response.Message(exchange, 200, insertMessage);
+                    }
                 }  catch (Exception e) {
-                    String errorMessage = "Error " + e.getMessage();
-                    exchange.setStatusCode(500);
-                    exchange1.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 500,  e.getMessage());
                 }
             });
         } finally {

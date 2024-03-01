@@ -1,56 +1,88 @@
 package ke.co.skyworld.handlers.classes;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Pagination;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Deque;
+import java.util.StringJoiner;
 
 public class GetClasses implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         Connection connection = ConnectDB.initializeDatabase();
-        try{
-// Extracting the columns parameter from the query string
+        try {
+            // Extracting the columns parameter from the query string
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
-            String[] columns = null;
-            if (columnsDeque != null && !columnsDeque.isEmpty()) {
-                String columnsString = columnsDeque.getFirst();
-                columns = columnsString.split(",");
-            } else {
-                columns = new String[]{"*"};
-            }
-        final String[] finalColumns = columns;
-            exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
+            String[] columns = (columnsDeque != null && !columnsDeque.isEmpty()) ? columnsDeque.getFirst().split(",") : new String[]{"*"};
+            StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
+            Deque<String> filterDeque = exchange.getQueryParameters().get("filter");
 
+            if (filterDeque != null && !filterDeque.isEmpty()) {
+                for (String filter : filterDeque) {
+                    // Splitting each filter into its components: field, operation, and value
+                    String[] parts = filter.split(":", 3);
+                    if (parts.length == 3) {
+                        String field = parts[0];
+                        String operation = parts[1];
+                        String value = parts[2];
+
+                        switch (operation) {
+                            case "like":
+                                whereClauseJoiner.add(field + " LIKE '%" + value + "%'");
+                                break;
+                            case "eq":
+                                whereClauseJoiner.add(field + " = '" + value + "'");
+                                break;
+                            case "begins":
+                                whereClauseJoiner.add(field + " LIKE '" + value + "%'");
+                                break;
+                            case "ends":
+                                whereClauseJoiner.add(field + " LIKE '%" + value + "'");
+                                break;
+
+                        }
+                    }
+                }
+            }
+
+            String whereClause = whereClauseJoiner.toString();
+
+            String table = "class" ;
+            if (!whereClause.isEmpty()) {
+                table += " WHERE " + whereClause;
+            }
                 try {
-                    JsonArray jsonArrayResult = GenericQueries.select(connection, "class", finalColumns);
+                    Pagination pagination = new Pagination(exchange);
+                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns,pagination.getPageSize(), pagination.calculateOffset());
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+
                     if (jsonArrayResult.size() == 0) {
-                        // No teacher found with the given ID
-                        exchange.setStatusCode(404); // Not Found
-                        exchange.getResponseSender().send("Class not found.");
+                        String errorMessage = "No classes";
+                        Response.Message(exchange, 404, errorMessage);
+                    } else if (jsonArrayResult.size() == 1) {
+                        JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                        exchange.setStatusCode(200);
+                        exchange.getResponseSender().send(jsonObjectResult.toString());
                     } else {
-                        // Teacher found, send the result
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                        exchange.setStatusCode(200);
                         exchange.getResponseSender().send(jsonArrayResult.toString());
                     }
                 } catch (SQLException e) {
-                    String errorMessage = "SQL Error occurred: " + e.getMessage();
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 500, e.getMessage());
                 }
-            });
-        }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
-        }
-        finally {
+        } catch (Exception e) {
+            Response.Message(exchange, 500, e.getMessage());
+        } finally {
             if (connection != null) {
-
                 connection.close();
             }
         }

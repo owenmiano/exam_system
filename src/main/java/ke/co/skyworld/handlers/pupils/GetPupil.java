@@ -1,12 +1,15 @@
 package ke.co.skyworld.handlers.pupils;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -18,6 +21,12 @@ public class GetPupil implements HttpHandler {
             String pupilIdString = pathMatch.getParameters().get("pupilId");
 
             try {
+                   if (pupilIdString == null || pupilIdString.isEmpty()) {
+                    String errorMessage = "Pupil ID must be provided.";
+                    Response.Message(exchange, 400, errorMessage);
+                    return;
+                    }
+
                 int pupilId = Integer.parseInt(pupilIdString);
                 String[] columns = {
                         "p.pupil_name",
@@ -38,20 +47,25 @@ public class GetPupil implements HttpHandler {
 
                 try {
                     // Execute the SELECT query
-                    JsonArray jsonArrayResult = GenericQueries.select(connection, table, columns, whereClause, values);
+                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns, whereClause, values);
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
 
                     if (jsonArrayResult.size() == 0) {
-                        exchange.setStatusCode(404); // Not Found
-                        exchange.getResponseSender().send("Pupil not found.");
+                        String errorMessage = "Pupil not found";
+                        Response.Message(exchange, 404, errorMessage);
+                    } else if (jsonArrayResult.size() == 1) {
+                        JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
+                        exchange.setStatusCode(200);
+                        exchange.getResponseSender().send(jsonObjectResult.toString());
                     } else {
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                        exchange.setStatusCode(200);
                         exchange.getResponseSender().send(jsonArrayResult.toString());
                     }
                 } catch (SQLException e) {
-                    String errorMessage = "Error " + e.getMessage();
-                    exchange.setStatusCode(500);
-                    exchange.getResponseSender().send(errorMessage);
+                    Response.Message(exchange, 500,  e.getMessage());
                 }
+            }catch (Exception e){
+                Response.Message(exchange, 500,  e.getMessage());
             }
             finally {
             if (connection != null) {

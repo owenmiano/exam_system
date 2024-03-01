@@ -8,7 +8,8 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.SelectQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -23,8 +24,7 @@ public class GeneratePupilsAnswers implements HttpHandler {
             String pupilIdString = pathMatch.getParameters().get("pupilId");
 
             if (pupilIdString == null || pupilIdString.isEmpty() || examSubjectIdString == null || examSubjectIdString.isEmpty()) {
-                exchange.setStatusCode(400);
-                exchange.getResponseSender().send("Pupil ID and Exam Subject ID are required.");
+                Response.Message(exchange, 400, "Pupil ID and Exam Subject ID are required.");
                 return;
             }
             try {
@@ -66,7 +66,7 @@ public class GeneratePupilsAnswers implements HttpHandler {
 
                 String whereClause = "p.pupils_id = ? AND es.exam_subject_id = ?";
                 Object[] params = new Object[]{pupilId, examSubject};
-                JsonArray answersReport = GenericQueries.select(connection, "answers a", joins, columns, whereClause, params);
+                JsonArray answersReport = SelectQuery.select(connection, "answers a", joins, columns, whereClause, params);
                 JsonObject result = new JsonObject();
                 JsonArray questionsArray = new JsonArray();
                 int totalScore = 0;
@@ -98,9 +98,10 @@ public class GeneratePupilsAnswers implements HttpHandler {
                 exchange.getResponseSender().send(result.toString());
 
             } catch (SQLException e) {
-                exchange.setStatusCode(500);
-                exchange.getResponseSender().send("Error: "+e.getMessage());
+                Response.Message(exchange, 500,  e.getMessage());
             }
+        }catch (Exception e) {
+            Response.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

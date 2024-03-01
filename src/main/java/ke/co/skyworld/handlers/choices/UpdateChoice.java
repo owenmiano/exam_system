@@ -4,10 +4,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.UpdateQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 
@@ -20,35 +20,30 @@ public class UpdateChoice implements HttpHandler {
             String choiceIdString = pathMatch.getParameters().get("choiceId");
             if (choiceIdString != null && !choiceIdString.isEmpty()) {
 
-
-                try {
                     int choicesId = Integer.parseInt(choiceIdString);
 
                     exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                         Gson gson = new Gson();
-                        JsonObject questionData = gson.fromJson(requestBody, JsonObject.class);
+                        JsonObject choicesData = gson.fromJson(requestBody, JsonObject.class);
 
                         String whereClause = "choices_id = ?";
 
-                        String result = GenericQueries.update(connection, "choices", questionData, whereClause, choicesId);
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                        exchange1.getResponseSender().send(result);
+                        String updateMessage = UpdateQuery.update(connection, "choices", choicesData, whereClause, choicesId);
+                        if (updateMessage.startsWith("Error")) {
+                            Response.Message(exchange, 500, updateMessage);
+                        } else {
+                            Response.Message(exchange, 200, updateMessage);
+                        }
 
                     });
-                } catch (NumberFormatException e) {
-                    String errorMessage = "Invalid choices ID: " + choiceIdString;
-                    System.out.println(errorMessage);
-                    exchange.getResponseSender().send(errorMessage);
-                }
+
             } else {
                 // Handle the case where the "id" parameter is missing
-                String errorMessage = "Choices ID is missing in the request URL.";
-                System.out.println(errorMessage);
-                exchange.getResponseSender().send(errorMessage);
+                String errorMessage = "Choices ID is missing ";
+                Response.Message(exchange, 400, errorMessage);
             }
         }catch (Exception e){
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: "+e.getMessage());
+            Response.Message(exchange, 400, e.getMessage());
         }finally {
             if (connection != null) {
 

@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.InsertQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 
@@ -22,18 +22,19 @@ public class CreateClass implements HttpHandler {
                     JsonObject classData = gson.fromJson(requestBody, JsonObject.class);
 
                     if (classData == null || !classData.has("class_name") || classData.get("class_name").getAsString().trim().isEmpty()) {
-                        String errorMessage = "Class name is missing.";
-                        exchange.setStatusCode(404);
-                        exchange.getResponseSender().send(errorMessage);
+                        String errorMessage = "Class name field is required.";
+                        Response.Message(exchange, 400, errorMessage);
                         return;
                     }
 
-                    String insertionResult = GenericQueries.insertData(connection, "class", classData);
-                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-                    exchange1.getResponseSender().send(insertionResult);
+                    String insertMessage = InsertQuery.insertData(connection, "class", classData);
+                    if (insertMessage.startsWith("Error")) {
+                        Response.Message(exchange, 500, insertMessage);
+                    } else {
+                        Response.Message(exchange, 200, insertMessage);
+                    }
                 } catch (Exception e) {
-                    exchange.setStatusCode(500);
-                    exchange.getResponseSender().send("Error: "+e.getMessage());
+                    Response.Message(exchange, 500,  e.getMessage());
                 }
             });
         } finally {

@@ -6,7 +6,8 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.GenericQueries;
+import ke.co.skyworld.queryBuilder.UpdateQuery;
+import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 
@@ -36,18 +37,20 @@ public class UpdateExam implements HttpHandler {
 
                         String whereClause = "exam_id = ?";
 
-                        String result = GenericQueries.update(connection, "exam", examData, whereClause, examId);
-                        exchange1.getResponseSender().send(result);
+                        String updateMessage = UpdateQuery.update(connection, "exam", examData, whereClause, examId);
+                        if (updateMessage.startsWith("Error")) {
+                            Response.Message(exchange, 500, updateMessage);
+                        } else {
+                            Response.Message(exchange, 200, updateMessage);
+                        }
 
                     });
                 }else {
-                // Handle the case where the exam ID is missing or empty
-                String errorMessage = "Exam ID is missing or empty in the request URL.";
-                System.out.println(errorMessage);
-                exchange.getResponseSender().send(errorMessage);
+                String errorMessage = "Exam ID is missing ";
+                Response.Message(exchange, 400, errorMessage);
             }
         }catch (Exception e){
-            throw e;
+            Response.Message(exchange, 500, e.getMessage());
         }finally {
             if (connection != null) {
 
