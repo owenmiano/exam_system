@@ -1,14 +1,15 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><configuration>
-    <database>
-        <type>mysql</type>
-        <name>exam_system</name>
-        <host>172.20.94.24</host>
-        <port>3306</port>
-        <username ENCRYPTED="yes">BVyeRs/tpxJ3S2KEq9C+3g==</username>
-        <password ENCRYPTED="yes">gf+WU1r+azfuGIJ27IhyLg==</password>
-    </database>
-    <api>
-        <host>172.20.94.25</host>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CONFIG>
+    <DATABASE>
+        <TYPE>mysql</TYPE>
+        <NAME>exam_system</NAME>
+        <HOST>172.20.94.24</HOST>
+        <PORT>3306</PORT>
+        <USERNAME ENCRYPTED="yes">BVyeRs/tpxJ3S2KEq9C+3g==</USERNAME>
+        <PASSWORD ENCRYPTED="yes">gf+WU1r+azfuGIJ27IhyLg==</PASSWORD>
+    </DATABASE>
+    <API>
+        <host>localhost</host>
         <port>2000</port>
-    </api>
-</configuration>
+    </API>
+</CONFIG>

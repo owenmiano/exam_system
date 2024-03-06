@@ -4,10 +4,6 @@ target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
-.META-INF/
-.out/
-.config/
-.idea/
 .idea/modules.xml
 .idea/jarRepositories.xml
 .idea/compiler.xml
@@ -40,3 +36,12 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Ignore the config folder
+.META-INF/
+.out/
+.config/
+.idea/
+
+# Ignore the EncryptionKey.java file
+/EncryptionKey.java

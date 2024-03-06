@@ -18,12 +18,14 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+
+import ke.co.skyworld.EncryptionKey;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 public class ConfigReader {
-    private static final byte[] secretKey = "aiajd9292UA7HK38381JSHA393JAKASt".getBytes(StandardCharsets.UTF_8);
+
     private static String dbType;
     private String dbName;
     private String dbHost;
@@ -63,15 +65,15 @@ public class ConfigReader {
             XPathFactory xpathFactory = XPathFactory.newInstance();
             XPath xpath = xpathFactory.newXPath();
 
-            this.setDbType(xpath.evaluate("/configuration/database/type", document));
-            this.setDbName(xpath.evaluate("/configuration/database/name", document));
-            this.setDbHost(xpath.evaluate("/configuration/database/host", document));
-            this.setDbPort(Integer.parseInt(xpath.evaluate("/configuration/database/port", document)));
-            this.setServerHost(xpath.evaluate("/configuration/api/host", document));
-            this.setServerPort(Integer.parseInt(xpath.evaluate("/configuration/api/port", document)));
+            this.setDbType(xpath.evaluate("/CONFIG/DATABASE/TYPE", document));
+            this.setDbName(xpath.evaluate("/CONFIG/DATABASE/NAME", document));
+            this.setDbHost(xpath.evaluate("/CONFIG/DATABASE/HOST", document));
+            this.setDbPort(Integer.parseInt(xpath.evaluate("/CONFIG/DATABASE/PORT", document)));
+            this.setServerHost(xpath.evaluate("/CONFIG/api/HOST", document));
+            this.setServerPort(Integer.parseInt(xpath.evaluate("/CONFIG/api/PORT", document)));
 
             // Process username
-            Node usernameNode = (Node) xpath.evaluate("/configuration/database/username", document, XPathConstants.NODE);
+            Node usernameNode = (Node) xpath.evaluate("/CONFIG/DATABASE/USERNAME", document, XPathConstants.NODE);
             if (usernameNode != null) {
                 String username = usernameNode.getTextContent();
                 String encryptedAttrUsername = ((Element) usernameNode).getAttribute("ENCRYPTED");
@@ -84,7 +86,7 @@ public class ConfigReader {
             }
 
             // Process password
-            Node passwordNode = (Node) xpath.evaluate("/configuration/database/password", document, XPathConstants.NODE);
+            Node passwordNode = (Node) xpath.evaluate("/CONFIG/DATABASE/PASSWORD", document, XPathConstants.NODE);
             if (passwordNode != null) {
                 String password = passwordNode.getTextContent();
                 String encryptedAttrPassword = ((Element) passwordNode).getAttribute("ENCRYPTED");
@@ -107,7 +109,7 @@ public class ConfigReader {
     private static String encrypt(String data) {
         try {
             Cipher cipher = Cipher.getInstance("AES");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "AES");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(EncryptionKey.secretKey, "AES");
 
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
             byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
@@ -144,8 +146,8 @@ public class ConfigReader {
 
     public Connection getConnection() throws SQLException {
         String connectionUrl = buildConnectionUrl();
-        String decryptedUsername = decrypt(this.getUsername(), secretKey);
-        String decryptedPassword = decrypt(this.getPassword(), secretKey);
+        String decryptedUsername = decrypt(this.getUsername(), EncryptionKey.secretKey);
+        String decryptedPassword = decrypt(this.getPassword(), EncryptionKey.secretKey);
 
         return DriverManager.getConnection(connectionUrl, decryptedUsername, decryptedPassword);
     }
@@ -204,14 +206,14 @@ public class ConfigReader {
                 "CREATE TABLE IF NOT EXISTS teachers (" +
                         "teacher_id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
                         "teacher_name VARCHAR(255) NOT NULL, " +
-                        "tsc_number INT, " +
+                        "tsc_number VARCHAR(250) NOT NULL, " +
                         "id_number VARCHAR(50), " +
                         "kra_pin VARCHAR(50), " +
                         "phone VARCHAR(50), " +
                         "email VARCHAR(50), " +
                         "date_of_birth DATE, " +
                         "class_id BIGINT, " +
-                        "username VARCHAR(250), " +
+                        "username VARCHAR(255), " +
                         "password VARCHAR(255), " +
                         "date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
                         "date_modified DATETIME NULL, " +
@@ -226,9 +228,9 @@ public class ConfigReader {
                         "pupils_id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
                         "pupil_name VARCHAR(255) NOT NULL, " +
                         "date_of_birth DATE, " +
-                        "guardian_name VARCHAR(25), " +
+                        "guardian_name VARCHAR(255), " +
                         "guardian_phone VARCHAR(50), " +
-                        "username VARCHAR(50), " +
+                        "username VARCHAR(255), " +
                         "reg_no VARCHAR(250), " +
                         "password VARCHAR(255), " +
                         "class_id BIGINT, " +
@@ -317,7 +319,7 @@ public class ConfigReader {
                         "email VARCHAR(50) UNIQUE, " +
                         "date_of_birth DATE, " +
                         "class_id BIGINT, " +
-                        "username VARCHAR(250) UNIQUE, " +
+                        "username VARCHAR(255) UNIQUE, " +
                         "password VARCHAR(255), " +
                         "date_created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
                         "date_modified TIMESTAMP, " +
@@ -329,7 +331,7 @@ public class ConfigReader {
                         "date_of_birth DATE, " +
                         "guardian_name VARCHAR(255), " +
                         "guardian_phone VARCHAR(50), " +
-                        "username VARCHAR(50) UNIQUE, " +
+                        "username VARCHAR(255) UNIQUE, " +
                         "reg_no VARCHAR(250) UNIQUE, " +
                         "password VARCHAR(255), " +
                         "class_id BIGINT, " +
