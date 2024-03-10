@@ -21,7 +21,7 @@ public class CreateClass implements HttpHandler {
                     Gson gson = new Gson();
                     JsonObject classData = gson.fromJson(requestBody, JsonObject.class);
 
-                    if (classData == null || !classData.has("class_name") || classData.get("class_name").getAsString().trim().isEmpty()) {
+                    if (!classData.has("class_name") || classData.get("class_name").getAsString().trim().isEmpty()) {
                         String errorMessage = "Class name field is required.";
                         Response.Message(exchange, 400, errorMessage);
                         return;

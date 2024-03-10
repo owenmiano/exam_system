@@ -86,6 +86,32 @@ public class SelectQuery {
         String columnList = String.join(", ", columns);
         return querySelect(conn, "SELECT " + columnList +  " FROM " + table + " LIMIT " + limit + " OFFSET " + offset);
     }
+    public static JsonArray select(Connection conn, String baseTable, String[] columns, String[][] joins, int limit, int offset) throws SQLException {
+        StringBuilder queryBuilder = new StringBuilder("SELECT ");
+        String columnList = String.join(", ", columns);
+        queryBuilder.append(columnList).append(" FROM ").append(baseTable);
+
+        for (String[] join : joins) {
+            if (join.length >= 3) { // Ensure each join information array contains exactly three elements
+                queryBuilder.append(" ").append(join[0])
+                        .append(" JOIN ")
+                        .append(join[1])
+                        .append(" ON ")
+                        .append(join[2]);
+                // Add additional ON conditions if present
+                for (int i = 3; i < join.length; i++) {
+                    queryBuilder.append(" AND ").append(join[i]);
+                }
+            } else {
+                throw new IllegalArgumentException("Each join must include exactly three elements: join type, join table, and join condition.");
+            }
+        }
+
+        queryBuilder.append(" LIMIT ").append(limit).append(" OFFSET ").append(offset);
+
+        return querySelect(conn, queryBuilder.toString());
+    }
+
 
 
 

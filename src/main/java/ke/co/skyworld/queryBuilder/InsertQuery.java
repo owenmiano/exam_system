@@ -3,9 +3,7 @@ package ke.co.skyworld.queryBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -20,7 +18,7 @@ public class InsertQuery {
         }
 
         String sql = "INSERT INTO " + tableName + " (" + columnNames.toString() + ") VALUES (" + placeholders.toString() + ")";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             int index = 1;
             for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
                 JsonElement value = entry.getValue();
@@ -44,7 +42,13 @@ public class InsertQuery {
             }
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows > 0) {
-                return "Data inserted successfully";
+                ResultSet generatedKeys = pstmt.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int insertId = generatedKeys.getInt(1);
+                    return "Data inserted successfully:" + insertId;
+                } else {
+                    return "Failed to retrieve insert ID";
+                }
             } else {
                 return "Failed to insert data";
             }

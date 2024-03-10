@@ -31,7 +31,6 @@ public class UpdateQuery {
             // Executing the update
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 int index = 1;
-
                 // Setting values for the columns to be updated
                 for (Map.Entry<String, JsonElement> entry : updates.entrySet()) {
                     JsonElement value = entry.getValue();

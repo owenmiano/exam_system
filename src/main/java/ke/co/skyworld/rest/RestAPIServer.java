@@ -25,6 +25,7 @@ public class RestAPIServer {
                     .addPrefixPath(BASE_REST_API_URL + "/classes", Routes.Class())
                     .addPrefixPath(BASE_REST_API_URL + "/pupils", Routes.Pupil())
                     .addPrefixPath(BASE_REST_API_URL + "/teachers", Routes.Teacher())
+                     .addPrefixPath(BASE_REST_API_URL + "/auth", Routes.Auth())
                     .addPrefixPath(BASE_REST_API_URL + "/subjects", Routes.Subject())
                     .addPrefixPath(BASE_REST_API_URL + "/exams", Routes.Exam())
                     .addPrefixPath(BASE_REST_API_URL + "/exam-schedules", Routes.ExamSchedule())

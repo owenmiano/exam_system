@@ -24,37 +24,61 @@ public class CreatePupil implements HttpHandler {
             exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                 try {
                     Gson gson = new Gson();
-                    JsonObject pupilData = gson.fromJson(requestBody, JsonObject.class);
+                    JsonObject requestData = gson.fromJson(requestBody, JsonObject.class);
 
-                    if (!pupilData.has("pupil_name")) {
+                    if (!requestData.has("pupil_name")) {
                         String errorMessage = "Pupil name is missing.";
                         Response.Message(exchange, 400,  errorMessage);
                         return;
                     }
-                    if (!pupilData.has("password")) {
+                    if (!requestData.has("password")) {
                         String errorMessage = "Password is missing.";
                         Response.Message(exchange, 400,  errorMessage);
                         return;
                     }
 
-
-                    String plainPassword = pupilData.get("password").getAsString();
+                    String username = requestData.get("username").getAsString();
+                    String plainPassword = requestData.get("password").getAsString();
                     String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
-                    pupilData.addProperty("password", hashedPassword);
 
-                    String phone = pupilData.has("guardian_phone") ? pupilData.get("guardian_phone").getAsString() : "";
+                    // Create JsonObject for "auth" table insertion
+                    JsonObject authData = new JsonObject();
+                    authData.addProperty("username", username);
+                    authData.addProperty("password", hashedPassword);
+                    authData.addProperty("role", "pupil");
+
+                    requestData.remove("username");
+                    requestData.remove("password");
+
+                    String phone = requestData.has("guardian_phone") ? requestData.get("guardian_phone").getAsString() : "";
 
                     if (!isValidPhoneNumber(phone)) {
                         String errorMessage = "Invalid phone number.";
                         Response.Message(exchange, 400,  errorMessage);
                         return;
                     }
-                    String insertMessage = InsertQuery.insertData(connection, "pupils", pupilData);
-                    if (insertMessage.startsWith("Error")) {
-                        Response.Message(exchange, 500, insertMessage);
-                    } else {
-                        Response.Message(exchange, 200, insertMessage);
+                    String insertAuthMessage = InsertQuery.insertData(connection, "auth", authData);
+                    String[] parts = insertAuthMessage.split(":");
+                    String insertAuthResult = parts[0];
+                    int authId = Integer.parseInt(parts[1]);
+
+                    // Check if insertion into the "auth" table was successful
+                    if (insertAuthResult.startsWith("Error")) {
+                        Response.Message(exchange, 500, insertAuthResult);
+                        return;
                     }
+                    requestData.addProperty("auth_id", authId);
+
+                    // Insert data into the "teachers" table
+                    String insertPupilMessage = InsertQuery.insertData(connection, "pupils", requestData);
+
+                    // Check if insertion into the "teachers" table was successful
+                    if (insertPupilMessage.startsWith("Error")) {
+                        Response.Message(exchange, 500, insertPupilMessage);
+                        return;
+                    }
+
+                    Response.Message(exchange, 200, "Data inserted successfully");
                 }  catch (Exception e) {
                     Response.Message(exchange, 500,  e.getMessage());
                 }

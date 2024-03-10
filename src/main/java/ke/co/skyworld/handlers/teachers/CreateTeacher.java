@@ -35,26 +35,33 @@ public class CreateTeacher implements HttpHandler {
         exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
             try {
                 Gson gson = new Gson();
-                JsonObject teacherData = gson.fromJson(requestBody, JsonObject.class);
+                JsonObject requestData = gson.fromJson(requestBody, JsonObject.class);
 
+                // Extract username and password for insertion into the "auth" table
+                String username = requestData.get("username").getAsString();
+                String plainPassword = requestData.get("password").getAsString();
+                String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
 
-                if (!teacherData.has("password")) {
-                    String errorMessage = "Password is missing.";
+                // Create JsonObject for "auth" table insertion
+                JsonObject authData = new JsonObject();
+                authData.addProperty("username", username);
+                authData.addProperty("password", hashedPassword);
+                authData.addProperty("role", "teacher");
+
+                // Remove username and password from the original data for insertion into the "teachers" table
+                requestData.remove("username");
+                requestData.remove("password");
+
+                if (!requestData.has("teacher_name")) {
+                    String errorMessage = "Teacher name is missing.";
                     Response.Message(exchange, 400,  errorMessage);
                     return;
                 }
-                if (!teacherData.has("teacher_name")) {
-                    String errorMessage = "Teacher name is missing.";
-                    Response.Message(exchange, 400,  errorMessage);
-                }
 
-                String plainPassword = teacherData.get("password").getAsString();
-                String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
-                teacherData.addProperty("password", hashedPassword);
-
-                String emailAddress = teacherData.has("email") ? teacherData.get("email").getAsString() : "";
-                String idNumber = teacherData.has("id_number") ? teacherData.get("id_number").getAsString() : "";
-                String phone = teacherData.has("phone") ? teacherData.get("phone").getAsString() : "";
+                // Validate other fields
+                String emailAddress = requestData.has("email") ? requestData.get("email").getAsString() : "";
+                String idNumber = requestData.has("id_number") ? requestData.get("id_number").getAsString() : "";
+                String phone = requestData.has("phone") ? requestData.get("phone").getAsString() : "";
 
                 if (!isValidEmail(emailAddress)) {
                     String errorMessage = "Invalid email address.";
@@ -73,12 +80,30 @@ public class CreateTeacher implements HttpHandler {
                     Response.Message(exchange, 400,  errorMessage);
                     return;
                 }
-                String insertMessage = InsertQuery.insertData(connection, "teachers", teacherData);
-                if (insertMessage.startsWith("Error")) {
-                    Response.Message(exchange, 500, insertMessage);
-                } else {
-                    Response.Message(exchange, 200, insertMessage);
+
+                // Insert data into the "auth" table
+                String insertAuthMessage = InsertQuery.insertData(connection, "auth", authData);
+                String[] parts = insertAuthMessage.split(":");
+                String insertAuthResult = parts[0];
+                int authId = Integer.parseInt(parts[1]);
+
+                // Check if insertion into the "auth" table was successful
+                if (insertAuthResult.startsWith("Error")) {
+                    Response.Message(exchange, 500, insertAuthResult);
+                    return;
                 }
+                requestData.addProperty("auth_id", authId);
+
+                // Insert data into the "teachers" table
+                String insertTeacherMessage = InsertQuery.insertData(connection, "teachers", requestData);
+
+                // Check if insertion into the "teachers" table was successful
+                if (insertTeacherMessage.startsWith("Error")) {
+                    Response.Message(exchange, 500, insertTeacherMessage);
+                    return;
+                }
+
+                Response.Message(exchange, 200, "Data inserted successfully");
             } catch (Exception e) {
                 Response.Message(exchange, 500,  e.getMessage());
             }

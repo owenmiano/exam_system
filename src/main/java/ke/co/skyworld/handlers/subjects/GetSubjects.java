@@ -20,72 +20,14 @@ public class GetSubjects implements HttpHandler {
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         Connection connection = ConnectDB.initializeDatabase();
         try {
-            // Extracting the columns parameter from the query string
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
             String[] columns = (columnsDeque != null && !columnsDeque.isEmpty()) ? columnsDeque.getFirst().split(",") : new String[]{"*"};
-            StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
-            Deque<String> filterDeque = exchange.getQueryParameters().get("filter");
+            // Specify the table and any joins
+            String table = "subject";
 
-            if (filterDeque != null && !filterDeque.isEmpty()) {
-                for (String filter : filterDeque) {
-                    // Splitting each filter into its components: field, operation, and value
-                    String[] parts = filter.split(":", 3);
-                    if (parts.length == 3) {
-                        String field = parts[0];
-                        String operation = parts[1];
-                        String value = parts[2];
-
-                        switch (operation) {
-                            case "like":
-                                whereClauseJoiner.add(field + " LIKE '%" + value + "%'");
-                                break;
-                            case "eq":
-                                whereClauseJoiner.add(field + " = '" + value + "'");
-                                break;
-                            case "begins":
-                                whereClauseJoiner.add(field + " LIKE '" + value + "%'");
-                                break;
-                            case "ends":
-                                whereClauseJoiner.add(field + " LIKE '%" + value + "'");
-                                break;
-
-                        }
-                    }
-                }
-            }
-
-            String whereClause = whereClauseJoiner.toString();
-            String table = "class" ;
-            if (!whereClause.isEmpty()) {
-                table += " WHERE " + whereClause;
-            }
-
-                try {
-                    Pagination pagination = new Pagination(exchange);
-                    JsonArray jsonArrayResult = SelectQuery.select(connection, table, columns,pagination.getPageSize(), pagination.calculateOffset());
-                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
-
-                    if (jsonArrayResult.isEmpty()) {
-                        String errorMessage = "No subjects";
-                        Response.Message(exchange, 404, errorMessage);
-                    } else if (jsonArrayResult.size() == 1) {
-                        JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
-                        exchange.setStatusCode(200);
-                        exchange.getResponseSender().send(jsonObjectResult.toString());
-                    } else {
-                        exchange.setStatusCode(200);
-                        exchange.getResponseSender().send(jsonArrayResult.toString());
-                    }
-                } catch (SQLException e) {
-                    Response.Message(exchange, 500, e.getMessage());
-                }
+            Response.Results(exchange,connection,table,columns);
         }catch (Exception e){
             Response.Message(exchange, 500, e.getMessage());
-        }finally {
-            if (connection != null) {
-
-                connection.close();
-            }
         }
     }
 }

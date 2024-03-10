@@ -19,7 +19,7 @@ import javax.xml.xpath.XPathFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-import ke.co.skyworld.Encryption;
+import ke.co.skyworld.KeyManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -106,10 +106,10 @@ public class ConfigReader {
         }
     }
 
-    private static String encrypt(String data) {
+    public static String encrypt(String data) {
         try {
             Cipher cipher = Cipher.getInstance("AES");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(Encryption.secretKey, "AES");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(KeyManager.ENCRYPT_KEY, "AES");
 
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
             byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
@@ -121,7 +121,7 @@ public class ConfigReader {
         }
     }
 
-    private static String decrypt(String encryptedData, byte[] secretKey) {
+    public static String decrypt(String encryptedData, byte[] secretKey) {
         try {
             Cipher cipher = Cipher.getInstance("AES");
             SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "AES");
@@ -146,8 +146,8 @@ public class ConfigReader {
 
     public Connection getConnection() throws SQLException {
         String connectionUrl = buildConnectionUrl();
-        String decryptedUsername = decrypt(this.getUsername(), Encryption.secretKey);
-        String decryptedPassword = decrypt(this.getPassword(), Encryption.secretKey);
+        String decryptedUsername = decrypt(this.getUsername(), KeyManager.ENCRYPT_KEY);
+        String decryptedPassword = decrypt(this.getPassword(), KeyManager.ENCRYPT_KEY);
 
         return DriverManager.getConnection(connectionUrl, decryptedUsername, decryptedPassword);
     }
@@ -203,6 +203,20 @@ public class ConfigReader {
                         "date_modified DATETIME NULL, " +
                         "UNIQUE INDEX unique_class_name (class_name))",
 
+                "CREATE TABLE IF NOT EXISTS auth (" +
+                        "auth_id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
+                        "role ENUM('teacher', 'pupil','admin') NOT NULL,"+
+                        "username VARCHAR(255) NOT NULL, " +
+                        "password VARCHAR(255) NOT NULL, " +
+                        "access_token VARCHAR(255) NULL, " +
+                        "reset_token VARCHAR(255) NULL, " +
+                        "login_attempts INT DEFAULT 0,"+
+                        "account_status VARCHAR(10) DEFAULT 'active',"+
+                        "date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                        "date_modified DATETIME NULL, " +
+                        "UNIQUE INDEX unique_username (username))" ,
+
+
                 "CREATE TABLE IF NOT EXISTS teachers (" +
                         "teacher_id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
                         "teacher_name VARCHAR(255) NOT NULL, " +
@@ -213,16 +227,15 @@ public class ConfigReader {
                         "email VARCHAR(50), " +
                         "date_of_birth DATE, " +
                         "class_id BIGINT, " +
-                        "username VARCHAR(255), " +
-                        "password VARCHAR(255), " +
+                        "auth_id BIGINT, " +
                         "date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
                         "date_modified DATETIME NULL, " +
-                        "UNIQUE INDEX unique_username (username), " +
                         "UNIQUE INDEX unique_email (email), " +
                         "UNIQUE INDEX unique_id_number  (id_number), " +
                         "UNIQUE INDEX unique_tsc_number  (tsc_number), " +
                         "UNIQUE INDEX unique_kra_pin  (kra_pin), " +
-                        "FOREIGN KEY (class_id) REFERENCES class(class_id))",
+                        "FOREIGN KEY (class_id) REFERENCES class(class_id),"+
+                        "FOREIGN KEY (auth_id) REFERENCES auth(auth_id))",
 
                 "CREATE TABLE IF NOT EXISTS pupils (" +
                         "pupils_id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
@@ -230,15 +243,14 @@ public class ConfigReader {
                         "date_of_birth DATE, " +
                         "guardian_name VARCHAR(255), " +
                         "guardian_phone VARCHAR(50), " +
-                        "username VARCHAR(255), " +
                         "reg_no VARCHAR(250), " +
-                        "password VARCHAR(255), " +
+                        "auth_id BIGINT, " +
                         "class_id BIGINT, " +
                         "date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
                         "date_modified DATETIME NULL, " +
-                        "UNIQUE INDEX unique_username (username), " +
                         "UNIQUE INDEX unique_reg_no (reg_no), " +
-                        "FOREIGN KEY (class_id) REFERENCES class(class_id))",
+                        "FOREIGN KEY (class_id) REFERENCES class(class_id),"+
+                        "FOREIGN KEY (auth_id) REFERENCES auth(auth_id))",
 
                 "CREATE TABLE IF NOT EXISTS subject (" +
                         "subject_id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
