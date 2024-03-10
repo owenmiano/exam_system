@@ -42,5 +42,5 @@ META-INF/
 out/
 config/
 .idea/
-# Ignore the EncryptionKey.java file
-/EncryptionKey.java
+# Ignore the KeyManager.java file
+/src/main/java/ke/co/skyworld/KeyManager.java
