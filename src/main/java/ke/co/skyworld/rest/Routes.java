@@ -3,6 +3,7 @@ package ke.co.skyworld.rest;
 import io.undertow.Handlers;
 import io.undertow.server.RoutingHandler;
 import io.undertow.server.handlers.BlockingHandler;
+import ke.co.skyworld.handlers.admin.CreateAdmin;
 import ke.co.skyworld.handlers.answers.*;
 import ke.co.skyworld.handlers.authentication.*;
 import ke.co.skyworld.handlers.classes.*;
@@ -24,10 +25,10 @@ public class Routes {
     public static RoutingHandler Class() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",new Dispatcher(new BlockingHandler(new CreateClass())))
-                .put( "/{classId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new UpdateClass()))))
-                .get( "/{classId}",authentication.authenticateUser( new Dispatcher(new GetClass())))
-                .get("",authentication.authenticateUser( new Dispatcher(new GetClasses())))
+                .post( "",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new CreateClass())),"admin"))
+                .put("/{classId}", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateClass())), "admin"))
+                .get("/{classId}", authentication.authenticateUser(new Dispatcher(new GetClass()), "admin", "teacher", "pupil"))
+                .get("",authentication.authenticateUser( new Dispatcher(new GetClasses()),"admin", "teacher", "pupil"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -36,9 +37,9 @@ public class Routes {
         Authentication authentication=new Authentication();
         return Handlers.routing()
                 .post( "", new Dispatcher(new BlockingHandler(new CreatePupil())))
-                .put( "/{pupilId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdatePupil()))))
-                .get( "/{pupilId}",authentication.authenticateUser( new Dispatcher(new GetPupil())))
-                .get("",authentication.authenticateUser(new Dispatcher(new GetPupils())))
+                .put( "/{pupilId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdatePupil())),"admin", "pupil"))
+                .get( "/{pupilId}",authentication.authenticateUser( new Dispatcher(new GetPupil()),"admin","teacher","pupil"))
+                .get("",authentication.authenticateUser(new Dispatcher(new GetPupils()),"admin","teacher"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -46,10 +47,17 @@ public class Routes {
     public static RoutingHandler Teacher() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "", authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new CreateTeacher()))))
-                .put( "/{teacherId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new UpdateTeacher()))))
-                .get( "/{teacherId}", authentication.authenticateUser(new Dispatcher(new GetTeacher())))
-                .get("",authentication.authenticateUser(new Dispatcher(new GetTeachers())))
+                .post( "", new Dispatcher(new BlockingHandler(new CreateTeacher())))
+                .put( "/{teacherId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateTeacher())),"admin","teacher"))
+                .get( "/{teacherId}", authentication.authenticateUser(new Dispatcher(new GetTeacher()),"admin","teacher"))
+                .get("",authentication.authenticateUser(new Dispatcher(new GetTeachers()),"admin","teacher"))
+                .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
+                .setFallbackHandler(new Dispatcher(new FallBack()));
+    }
+    public static RoutingHandler Admin() {
+        Authentication authentication=new Authentication();
+        return Handlers.routing()
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateAdmin())),"admin"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -57,16 +65,16 @@ public class Routes {
         Authentication authentication=new Authentication();
         return Handlers.routing()
                 .post( "/login", new Dispatcher(new BlockingHandler(new LoginUser())))
-                .post( "/refresh-token", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new RefreshToken()))));
+                .post( "/refresh-token", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new RefreshToken())),"admin","teacher","pupil"));
     }
 
     public static RoutingHandler Exam() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",authentication.authorizeTeacher( new Dispatcher(new BlockingHandler(new CreateExam()))))
-                .put( "/{examId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new UpdateExam()))))
-                .get( "/{examId}",authentication.authenticateUser( new Dispatcher(new GetExam())))
-                .get("",authentication.authenticateUser(new Dispatcher(new GetExams())))
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateExam())),"teacher"))
+                .put( "/{examId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateExam())),"teacher"))
+                .get( "/{examId}",authentication.authenticateUser( new Dispatcher(new GetExam()),"admin","teacher","pupil"))
+                .get("",authentication.authenticateUser(new Dispatcher(new GetExams()),"teacher"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -74,10 +82,10 @@ public class Routes {
     public static RoutingHandler ExamSchedule() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",authentication.authorizeTeacher( new Dispatcher(new BlockingHandler(new CreateExamSchedules()))))
-                .put( "/{examScheduleId}",authentication.authorizeTeacher( new Dispatcher(new BlockingHandler(new UpdateExamSchedule()))))
-                .get( "/{examScheduleId}",authentication.authenticateUser(new Dispatcher(new GetExamSchedule())))
-                .get("",authentication.authenticateUser(new Dispatcher(new GetExamSchedules())))
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateExamSchedules())),"teacher"))
+                .put( "/{examScheduleId}",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new UpdateExamSchedule())),"teacher"))
+                .get( "/{examScheduleId}",authentication.authenticateUser(new Dispatcher(new GetExamSchedule()),"teacher","pupil"))
+                .get("",authentication.authenticateUser(new Dispatcher(new GetExamSchedules()),"teacher"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -85,10 +93,10 @@ public class Routes {
     public static RoutingHandler Subject() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",authentication.authorizeTeacher( new Dispatcher(new BlockingHandler(new CreateSubject()))))
-                .put( "/{subjectId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new UpdateSubject()))))
-                .get( "/{subjectId}",authentication.authenticateUser( new Dispatcher(new GetSubject())))
-                .get("",authentication.authenticateUser( new Dispatcher(new GetSubjects())))
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateSubject())),"admin","teacher"))
+                .put( "/{subjectId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateSubject())),"admin","teacher"))
+                .get( "/{subjectId}",authentication.authenticateUser( new Dispatcher(new GetSubject()),"admin","teacher","pupil"))
+                .get("",authentication.authenticateUser( new Dispatcher(new GetSubjects()),"admin","teacher","pupil"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -96,16 +104,16 @@ public class Routes {
     public static RoutingHandler Answers() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateAnswer()))));
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateAnswer())),"pupil"));
     }
 
     public static RoutingHandler Question() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",authentication.authorizeTeacher( new Dispatcher(new BlockingHandler(new CreateQuestion()))))
-                .put( "/{questionId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new UpdateQuestion()))))
-                .get( "/{examSubjectId}/{questionId}",authentication.authenticateUser( new Dispatcher(new GetQuestion())))
-                .get("",authentication.authenticateUser(new Dispatcher(new GetQuestions())))
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateQuestion())),"admin","teacher"))
+                .put( "/{questionId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateQuestion())),"admin","teacher"))
+                .get( "/{examSubjectId}/{questionId}",authentication.authenticateUser( new Dispatcher(new GetQuestion()),"admin","teacher","pupil"))
+                .get("",authentication.authenticateUser(new Dispatcher(new GetQuestions()),"admin","teacher","pupil"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -113,8 +121,8 @@ public class Routes {
     public static RoutingHandler Choice() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .post( "",authentication.authorizeTeacher( new Dispatcher(new BlockingHandler(new CreateChoice()))))
-                .put( "/{choiceId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new UpdateChoice()))))
+                .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateChoice())),"admin","teacher"))
+                .put( "/{choiceId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateChoice())),"admin","teacher"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
@@ -122,10 +130,10 @@ public class Routes {
     public static RoutingHandler Report() {
         Authentication authentication=new Authentication();
         return Handlers.routing()
-                .get( "/exams-by-teacher/{teacherId}", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new GenerateExamsByTeacher()))))
-                .get( "/generate-answers/{examSubjectId}/{pupilId}",authentication.authorizeTeacher(new Dispatcher(new BlockingHandler(new GeneratePupilsAnswers()))))
-                .get( "/top-five-results/{examSubjectId}",authentication.authenticateUser( new Dispatcher(new GenerateTopFivePupils())))
-                .get("/pupils-score/{examId}",authentication.authenticateUser(new Dispatcher(new GeneratePupilScoreReport())))
+                .get( "/exams-by-teacher/{teacherId}", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new GenerateExamsByTeacher())),"admin","teacher"))
+                .get( "/generate-answers/{examSubjectId}/{pupilId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new GeneratePupilsAnswers())),"teacher"))
+                .get( "/top-five-results/{examSubjectId}",authentication.authenticateUser( new Dispatcher(new GenerateTopFivePupils()),"admin","teacher","pupil"))
+                .get("/pupils-score/{examId}",authentication.authenticateUser(new Dispatcher(new GeneratePupilScoreReport()),"admin","teacher","pupil"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
