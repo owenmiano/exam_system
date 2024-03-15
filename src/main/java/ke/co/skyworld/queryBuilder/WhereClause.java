@@ -10,6 +10,11 @@ public class WhereClause {
     public static String generateWhereClause(HttpServerExchange exchange) {
         StringJoiner whereClauseJoiner = new StringJoiner(" AND ");
         Deque<String> filterDeque = exchange.getQueryParameters().get("filter");
+        String logicalOperator = exchange.getQueryParameters().get("logicalOperator") != null ?
+                exchange.getQueryParameters().get("logicalOperator").getFirst() :
+                null;
+
+
         if (filterDeque != null && !filterDeque.isEmpty()) {
             for (String filter : filterDeque) {
                 // Splitting each filter into its components: field, operation, and value
@@ -52,7 +57,17 @@ public class WhereClause {
             }
         }
 
-        return whereClauseJoiner.toString();
+        String whereClause = whereClauseJoiner.toString();
+
+        if (logicalOperator != null && !logicalOperator.isEmpty()) {
+            // Apply logical operator if provided
+            if (logicalOperator.equalsIgnoreCase("OR")) {
+                // Change the AND to OR
+                whereClause = whereClause.replace("AND", "OR");
+            }
+        }
+
+        return whereClause;
     }
 }
 

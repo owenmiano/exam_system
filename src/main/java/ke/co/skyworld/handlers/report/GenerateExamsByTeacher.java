@@ -7,7 +7,7 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -21,7 +21,7 @@ public class GenerateExamsByTeacher implements HttpHandler {
             String teacherIdString = pathMatch.getParameters().get("teacherId");
 
             if (teacherIdString == null || teacherIdString.isEmpty()) {
-                Response.Message(exchange, 400, "Teacher ID is required.");
+                Responses.Message(exchange, 400, "Teacher ID is required.");
                 return;
             }
 
@@ -53,10 +53,10 @@ public class GenerateExamsByTeacher implements HttpHandler {
                 exchange.getResponseSender().send(jsonResult);
 
             }  catch (SQLException e) {
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         }catch (Exception e) {
-            Response.Message(exchange, 500,  e.getMessage());
+            Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

@@ -6,7 +6,7 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.InsertQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
@@ -25,12 +25,12 @@ public class CreateAdmin implements HttpHandler {
 
                     if (!requestData.has("password")) {
                         String errorMessage = "Password is missing.";
-                        Response.Message(exchange, 400,  errorMessage);
+                        Responses.Message(exchange, 400,  errorMessage);
                         return;
                     }
                     if (!requestData.has("username")) {
                         String errorMessage = "Username is missing.";
-                        Response.Message(exchange, 400,  errorMessage);
+                        Responses.Message(exchange, 400,  errorMessage);
                         return;
                     }
 
@@ -52,13 +52,13 @@ public class CreateAdmin implements HttpHandler {
 
                     // Check if insertion into the "auth" table was successful
                     if (insertAuthResult.startsWith("Error")) {
-                        Response.Message(exchange, 500, insertAuthResult);
+                        Responses.Message(exchange, 500, insertAuthResult);
                         return;
                     }
 
-                    Response.Message(exchange, 200, "Data inserted successfully");
+                    Responses.Message(exchange, 200, "Data inserted successfully");
                 }  catch (Exception e) {
-                    Response.Message(exchange, 500,  e.getMessage());
+                    Responses.Message(exchange, 500,  e.getMessage());
                 }
             });
         } finally {

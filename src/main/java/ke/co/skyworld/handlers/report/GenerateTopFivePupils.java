@@ -10,7 +10,7 @@ import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -26,7 +26,7 @@ public class GenerateTopFivePupils implements HttpHandler {
             String examsubjectIdString = pathMatch.getParameters().get("examSubjectId");
 
             if (examsubjectIdString == null) {
-                Response.Message(exchange, 400,"Exam Subject ID is required.");
+                Responses.Message(exchange, 400,"Exam Subject ID is required.");
                 return;
             }
             try {
@@ -81,10 +81,10 @@ public class GenerateTopFivePupils implements HttpHandler {
                 exchange.getResponseSender().send(topFivePupils.toString());
 
             } catch (SQLException e) {
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         }catch (Exception e) {
-            Response.Message(exchange, 500,  e.getMessage());
+            Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

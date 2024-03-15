@@ -1,22 +1,12 @@
 package ke.co.skyworld.handlers.questions;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
-import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Pagination;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringJoiner;
 
 public class GetQuestions implements HttpHandler {
     @Override
@@ -31,10 +21,10 @@ public class GetQuestions implements HttpHandler {
                     "JOIN subject s ON es.subject_id = s.subject_id " +
                     "JOIN choices ch ON q.questions_id = ch.questions_id ";
 
-            Response.Results(exchange,connection,table,columns);
+            Responses.Results(exchange,connection,table,columns);
 
         } catch (Exception e) {
-            Response.Message(exchange, 500, e.getMessage());
+            Responses.Message(exchange, 500, e.getMessage());
         }
     }
 }

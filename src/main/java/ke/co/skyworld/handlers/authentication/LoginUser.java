@@ -9,11 +9,12 @@ import ke.co.skyworld.accessToken.GenerateToken;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
 import ke.co.skyworld.queryBuilder.UpdateQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
-import java.sql.SQLException;
+
+import static ke.co.skyworld.utils.PasswordEncryption.hashPassword;
 
 public class LoginUser implements HttpHandler {
     @Override
@@ -28,12 +29,13 @@ public class LoginUser implements HttpHandler {
                     if (!requestData.has("username") || requestData.get("username").getAsString().trim().isEmpty() ||
                             !requestData.has("password") || requestData.get("password").getAsString().trim().isEmpty()) {
                         String errorMessage = "Username and password fields are required.";
-                        Response.Message(exchange, 400, errorMessage);
+                        Responses.Message(exchange, 400, errorMessage);
                         return;
                     }
 
                     String username = requestData.get("username").getAsString();
                     String password = requestData.get("password").getAsString();
+//                    String hashedPassword = hashPassword(password);
 
                     String[] columns = {"password", "login_attempts", "account_status","role"};
                     // Construct WHERE clause to find the user by username
@@ -50,24 +52,24 @@ public class LoginUser implements HttpHandler {
                         // Check if the account is locked
                         if (accountStatus.equalsIgnoreCase("locked")) {
                             String errorMessage = "Your Account is locked.";
-                            Response.Message(exchange, 403, errorMessage);
+                            Responses.Message(exchange, 403, errorMessage);
                             return;
                         }
 
                         // Check if the provided password matches the stored password
-                        if (!BCrypt.checkpw(password, storedPassword)) {
+                        if (!storedPassword.equals(password)) {
                             // Increment login attempts
                             loginAttempts++;
                             if (loginAttempts >= 3) {
                                 // Update account status to locked
                                 updateAccountStatus(connection, username);
                                 String errorMessage = "Maximum login attempts reached. Account locked.";
-                                Response.Message(exchange, 403, errorMessage);
+                                Responses.Message(exchange, 403, errorMessage);
                             } else {
                                 // Update login attempts count
                                 updateLoginAttempts(connection, username, loginAttempts);
                                 String errorMessage = "Incorrect password. Please try again.";
-                                Response.Message(exchange, 401, errorMessage);
+                                Responses.Message(exchange, 401, errorMessage);
                             }
                             return;
                         }
@@ -77,14 +79,14 @@ public class LoginUser implements HttpHandler {
                         String accessToken=GenerateToken.accessToken(username,userRole);
                         updateAccessToken(connection, username, accessToken);
                         String successMessage = "Login successful.";
-                        Response.Message(exchange, 200, successMessage);
+                        Responses.Message(exchange, 200, successMessage);
                     } else {
                         // User not found
                         String errorMessage = "Invalid username or password.";
-                        Response.Message(exchange, 401, errorMessage);
+                        Responses.Message(exchange, 401, errorMessage);
                     }
                 } catch (Exception e) {
-                    Response.Message(exchange, 500,  e.getMessage());
+                    Responses.Message(exchange, 500,  e.getMessage());
                 }
             });
         } finally {

@@ -18,12 +18,12 @@ import ke.co.skyworld.handlers.subjects.*;
 import ke.co.skyworld.handlers.examSchedules.*;
 import ke.co.skyworld.handlers.questions.*;
 import ke.co.skyworld.handlers.choices.*;
-import ke.co.skyworld.middleware.Authentication;
+import ke.co.skyworld.middleware.AuthenticationMiddleware;
 import ke.co.skyworld.rest.base.*;
 
 public class Routes {
     public static RoutingHandler Class() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new CreateClass())),"admin"))
                 .put("/{classId}", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateClass())), "admin"))
@@ -34,7 +34,7 @@ public class Routes {
     }
 
     public static RoutingHandler Pupil() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "", new Dispatcher(new BlockingHandler(new CreatePupil())))
                 .put( "/{pupilId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdatePupil())),"admin", "pupil"))
@@ -45,7 +45,7 @@ public class Routes {
     }
 
     public static RoutingHandler Teacher() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "", new Dispatcher(new BlockingHandler(new CreateTeacher())))
                 .put( "/{teacherId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateTeacher())),"admin","teacher"))
@@ -55,21 +55,21 @@ public class Routes {
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
     public static RoutingHandler Admin() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateAdmin())),"admin"))
                 .setInvalidMethodHandler(new Dispatcher(new InvalidMethod()))
                 .setFallbackHandler(new Dispatcher(new FallBack()));
     }
     public static RoutingHandler Auth() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "/login", new Dispatcher(new BlockingHandler(new LoginUser())))
                 .post( "/refresh-token", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new RefreshToken())),"admin","teacher","pupil"));
     }
 
     public static RoutingHandler Exam() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateExam())),"teacher"))
                 .put( "/{examId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateExam())),"teacher"))
@@ -80,7 +80,7 @@ public class Routes {
     }
 
     public static RoutingHandler ExamSchedule() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateExamSchedules())),"teacher"))
                 .put( "/{examScheduleId}",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new UpdateExamSchedule())),"teacher"))
@@ -91,7 +91,7 @@ public class Routes {
     }
 
     public static RoutingHandler Subject() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateSubject())),"admin","teacher"))
                 .put( "/{subjectId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateSubject())),"admin","teacher"))
@@ -102,13 +102,13 @@ public class Routes {
     }
 
     public static RoutingHandler Answers() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateAnswer())),"pupil"));
     }
 
     public static RoutingHandler Question() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateQuestion())),"admin","teacher"))
                 .put( "/{questionId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateQuestion())),"admin","teacher"))
@@ -119,7 +119,7 @@ public class Routes {
     }
 
     public static RoutingHandler Choice() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "",authentication.authenticateUser( new Dispatcher(new BlockingHandler(new CreateChoice())),"admin","teacher"))
                 .put( "/{choiceId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new UpdateChoice())),"admin","teacher"))
@@ -128,7 +128,7 @@ public class Routes {
     }
 
     public static RoutingHandler Report() {
-        Authentication authentication=new Authentication();
+        AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .get( "/exams-by-teacher/{teacherId}", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new GenerateExamsByTeacher())),"admin","teacher"))
                 .get( "/generate-answers/{examSubjectId}/{pupilId}",authentication.authenticateUser(new Dispatcher(new BlockingHandler(new GeneratePupilsAnswers())),"teacher"))

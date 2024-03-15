@@ -10,7 +10,7 @@ import ke.co.skyworld.queryBuilder.WhereClause;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class Response {
+public class Responses {
     public static void Message(HttpServerExchange exchange, int statusCode, String message) {
         exchange.setStatusCode(statusCode);
         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
@@ -44,7 +44,7 @@ public class Response {
 
             if (jsonArrayResult.size() == 0) {
                 String errorMessage = "No record found";
-                Response.Message(exchange, 404, errorMessage);
+                Responses.Message(exchange, 404, errorMessage);
             } else if (jsonArrayResult.size() == 1) {
                 JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
                 responseJson.add("data", jsonObjectResult);
@@ -55,9 +55,9 @@ public class Response {
 
 
         } catch (SQLException e) {
-            Response.Message(exchange, 500, e.getMessage());
+            Responses.Message(exchange, 500, e.getMessage());
         } catch (Exception e) {
-            Response.Message(exchange, 500, e.getMessage());
+            Responses.Message(exchange, 500, e.getMessage());
         } finally {
             try {
                 if (connection != null) {

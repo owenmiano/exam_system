@@ -7,7 +7,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.UpdateQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 
@@ -30,9 +30,9 @@ public class UpdateChoice implements HttpHandler {
 
                         String updateMessage = UpdateQuery.update(connection, "choices", choicesData, whereClause, choicesId);
                         if (updateMessage.startsWith("Error")) {
-                            Response.Message(exchange, 500, updateMessage);
+                            Responses.Message(exchange, 500, updateMessage);
                         } else {
-                            Response.Message(exchange, 200, updateMessage);
+                            Responses.Message(exchange, 200, updateMessage);
                         }
 
                     });
@@ -40,10 +40,10 @@ public class UpdateChoice implements HttpHandler {
             } else {
                 // Handle the case where the "id" parameter is missing
                 String errorMessage = "Choices ID is missing ";
-                Response.Message(exchange, 400, errorMessage);
+                Responses.Message(exchange, 400, errorMessage);
             }
         }catch (Exception e){
-            Response.Message(exchange, 400, e.getMessage());
+            Responses.Message(exchange, 400, e.getMessage());
         }finally {
             if (connection != null) {
 

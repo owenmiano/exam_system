@@ -1,18 +1,11 @@
 package ke.co.skyworld.handlers.pupils;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Pagination;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Deque;
-import java.util.StringJoiner;
 
 public class GetPupils implements HttpHandler {
     @Override
@@ -25,10 +18,10 @@ public class GetPupils implements HttpHandler {
             String table = "pupils p " +
                     "JOIN class cl ON p.class_id = cl.class_id " ;
 
-            Response.Results(exchange,connection,table,columns);
+            Responses.Results(exchange,connection,table,columns);
 
         } catch (Exception e) {
-            Response.Message(exchange, 500, e.getMessage());
+            Responses.Message(exchange, 500, e.getMessage());
         }
     }
 }

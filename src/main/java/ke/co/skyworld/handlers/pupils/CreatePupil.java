@@ -6,10 +6,11 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.InsertQuery;
-import ke.co.skyworld.utils.Response;
-import org.mindrot.jbcrypt.BCrypt;
+import ke.co.skyworld.utils.Responses;
+import ke.co.skyworld.utils.PasswordEncryption;
 
 import java.sql.Connection;
+import static ke.co.skyworld.utils.PasswordEncryption.hashPassword;
 
 public class CreatePupil implements HttpHandler {
     private static boolean isValidPhoneNumber(String phoneNumber) {
@@ -28,23 +29,23 @@ public class CreatePupil implements HttpHandler {
 
                     if (!requestData.has("pupil_name")) {
                         String errorMessage = "Pupil name is missing.";
-                        Response.Message(exchange, 400,  errorMessage);
+                        Responses.Message(exchange, 400,  errorMessage);
                         return;
                     }
                     if (!requestData.has("password")) {
                         String errorMessage = "Password is missing.";
-                        Response.Message(exchange, 400,  errorMessage);
+                        Responses.Message(exchange, 400,  errorMessage);
                         return;
                     }
 
                     String username = requestData.get("username").getAsString();
-                    String plainPassword = requestData.get("password").getAsString();
-                    String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+                    String password = requestData.get("password").getAsString();
+//                    String hashedPassword = hashPassword(password);
 
                     // Create JsonObject for "auth" table insertion
                     JsonObject authData = new JsonObject();
                     authData.addProperty("username", username);
-                    authData.addProperty("password", hashedPassword);
+                    authData.addProperty("password", password);
                     authData.addProperty("role", "pupil");
 
                     requestData.remove("username");
@@ -54,9 +55,11 @@ public class CreatePupil implements HttpHandler {
 
                     if (!isValidPhoneNumber(phone)) {
                         String errorMessage = "Invalid phone number.";
-                        Response.Message(exchange, 400,  errorMessage);
+                        Responses.Message(exchange, 400,  errorMessage);
                         return;
                     }
+                    connection.setAutoCommit(false);
+
                     String insertAuthMessage = InsertQuery.insertData(connection, "auth", authData);
                     String[] parts = insertAuthMessage.split(":");
                     String insertAuthResult = parts[0];
@@ -64,7 +67,8 @@ public class CreatePupil implements HttpHandler {
 
                     // Check if insertion into the "auth" table was successful
                     if (insertAuthResult.startsWith("Error")) {
-                        Response.Message(exchange, 500, insertAuthResult);
+                        connection.rollback();
+                        Responses.Message(exchange, 500, insertAuthResult);
                         return;
                     }
                     requestData.addProperty("auth_id", authId);
@@ -74,18 +78,21 @@ public class CreatePupil implements HttpHandler {
 
                     // Check if insertion into the "teachers" table was successful
                     if (insertPupilMessage.startsWith("Error")) {
-                        Response.Message(exchange, 500, insertPupilMessage);
+                        connection.rollback();
+                        Responses.Message(exchange, 500, insertPupilMessage);
                         return;
                     }
 
-                    Response.Message(exchange, 200, "Data inserted successfully");
+                     // Commit transaction
+                    connection.commit();
+                    Responses.Message(exchange, 200, "Data inserted successfully");
                 }  catch (Exception e) {
-                    Response.Message(exchange, 500,  e.getMessage());
+                    Responses.Message(exchange, 500,  e.getMessage());
                 }
             });
         } finally {
         if (connection != null) {
-
+            connection.setAutoCommit(true);
             connection.close();
         }
     }

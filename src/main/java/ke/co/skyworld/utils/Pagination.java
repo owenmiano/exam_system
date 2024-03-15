@@ -15,7 +15,7 @@ public class Pagination {
         Deque<String> pageDeque = exchange.getQueryParameters().get("page");
         int parsedPage = pageDeque != null && !pageDeque.isEmpty() ? Integer.parseInt(pageDeque.getFirst()) : 1;
         if (parsedPage < 1) {
-            Response.Message(exchange, 400, "Page cannot be below 1");
+            Responses.Message(exchange, 400, "Page cannot be below 1");
             parsedPage = 1; // Set page to 1 if it's below 1
         }
         this.page = parsedPage;
@@ -26,7 +26,7 @@ public class Pagination {
         }
 
         if (parsedPageSize < 1 || parsedPageSize > maxPageSize) {
-            Response.Message(exchange, 400, "Page size must be between 1 and 50");
+            Responses.Message(exchange, 400, "Page size must be between 1 and 50");
             parsedPageSize = 5; // Set default page size
         }
 

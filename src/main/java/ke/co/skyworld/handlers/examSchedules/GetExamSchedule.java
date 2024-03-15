@@ -8,7 +8,7 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -23,7 +23,7 @@ public class GetExamSchedule implements HttpHandler {
             String examScheduleIdString = pathMatch.getParameters().get("examScheduleId");
             if (examScheduleIdString == null || examScheduleIdString.isEmpty()) {
                 String errorMessage = "Exam Schedule ID must be provided.";
-                Response.Message(exchange, 400, errorMessage);
+                Responses.Message(exchange, 400, errorMessage);
                 return;
 
             }
@@ -53,7 +53,7 @@ public class GetExamSchedule implements HttpHandler {
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     if (jsonArrayResult.size() == 0) {
                         String errorMessage = "Exam schedule not found";
-                        Response.Message(exchange, 404, errorMessage);
+                        Responses.Message(exchange, 404, errorMessage);
                     } else if (jsonArrayResult.size() == 1) {
                         JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
                         exchange.setStatusCode(200);
@@ -64,11 +64,11 @@ public class GetExamSchedule implements HttpHandler {
                     }
 
                 } catch (SQLException e) {
-                    Response.Message(exchange, 500,  e.getMessage());
+                    Responses.Message(exchange, 500,  e.getMessage());
                 }
             }  catch (Exception e) {
                 // Handle any other unexpected exceptions
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         }finally {
             if (connection != null) {

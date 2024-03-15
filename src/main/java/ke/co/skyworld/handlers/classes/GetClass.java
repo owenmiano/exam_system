@@ -8,7 +8,7 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.util.Deque;
@@ -41,7 +41,7 @@ public class GetClass implements HttpHandler {
 
             if (jsonArrayResult.size() == 0) {
                 String errorMessage = "Class not found";
-                Response.Message(exchange, 404, errorMessage);
+                Responses.Message(exchange, 404, errorMessage);
             } else if (jsonArrayResult.size() == 1) {
                 JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
                 exchange.setStatusCode(200);
@@ -53,12 +53,12 @@ public class GetClass implements HttpHandler {
             }
             else {
                 String errorMessage = "Class ID must be provided.";
-                Response.Message(exchange, 400, errorMessage);
+                Responses.Message(exchange, 400, errorMessage);
 
             }
 
         }catch (Exception e){
-            Response.Message(exchange, 500,  e.getMessage());
+            Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

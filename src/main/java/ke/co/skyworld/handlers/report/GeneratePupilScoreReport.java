@@ -10,7 +10,7 @@ import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -33,7 +33,7 @@ public class GeneratePupilScoreReport implements HttpHandler {
             String examIdString = pathMatch.getParameters().get("examId");
 
             if (examIdString == null) {
-                Response.Message(exchange, 400,"Exam ID is required.");
+                Responses.Message(exchange, 400,"Exam ID is required.");
                 return;
             }
             int exam = Integer.parseInt(examIdString);
@@ -172,15 +172,15 @@ public class GeneratePupilScoreReport implements HttpHandler {
                             }
                             outputStream.flush(); // Make sure all data is sent.
                         } catch (IOException e) {
-                            Response.Message(exchange, 500,  e.getMessage());
+                            Responses.Message(exchange, 500,  e.getMessage());
                         }
                     });
                 } else {
-                    Response.Message(exchange, 400,"Report file not found.");
+                    Responses.Message(exchange, 400,"Report file not found.");
                 }
 
             } catch (SQLException | IOException e) {
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         }
         finally {

@@ -8,7 +8,7 @@ import io.undertow.util.Headers;
 import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -26,7 +26,7 @@ public class GetQuestion implements HttpHandler {
             String questionIdString = pathMatch.getParameters().get("questionId");
 
             if (examSubjectIdString == null || examSubjectIdString.isEmpty() || questionIdString == null || questionIdString.isEmpty()) {
-                Response.Message(exchange, 400, "Both examSubjectId and questionId are required.");
+                Responses.Message(exchange, 400, "Both examSubjectId and questionId are required.");
                 return;
             }
             try {
@@ -94,10 +94,10 @@ public class GetQuestion implements HttpHandler {
                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     exchange.getResponseSender().send(aggregatedQuestions.toString());
                 } catch (SQLException e) {
-                    Response.Message(exchange, 500,  e.getMessage());
+                    Responses.Message(exchange, 500,  e.getMessage());
                 }
             } catch (Exception e) {
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         }finally {
             if (connection != null) {

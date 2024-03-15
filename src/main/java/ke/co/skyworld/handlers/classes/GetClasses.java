@@ -3,7 +3,7 @@ package ke.co.skyworld.handlers.classes;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.util.Deque;
@@ -17,10 +17,10 @@ public class GetClasses implements HttpHandler {
             String[] columns = (columnsDeque != null && !columnsDeque.isEmpty()) ? columnsDeque.getFirst().split(",") : new String[]{"*"};
             // Specify the table and any joins
             String table = "class";
-            Response.Results(exchange,connection,table,columns);
+            Responses.Results(exchange,connection,table,columns);
 
         } catch (Exception e) {
-            Response.Message(exchange, 500, e.getMessage());
+            Responses.Message(exchange, 500, e.getMessage());
         }
     }
 }

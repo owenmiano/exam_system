@@ -6,7 +6,7 @@ import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.handlers.authentication.RefreshToken;
 import ke.co.skyworld.queryBuilder.UpdateQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 
@@ -22,9 +22,9 @@ public class UpdateToken implements HttpHandler {
         Object[] params = {userName};
         String updateMessage=UpdateQuery.update(connection, "auth",authData,whereClause,params);
         if (updateMessage.startsWith("Error")) {
-            Response.Message(exchange, 500, updateMessage);
+            Responses.Message(exchange, 500, updateMessage);
         } else {
-            Response.Message(exchange, 200, "User session successfully renewed");
+            Responses.Message(exchange, 200, "User session successfully renewed");
         }
 
     }

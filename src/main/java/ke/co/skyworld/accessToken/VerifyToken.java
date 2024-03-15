@@ -1,15 +1,12 @@
 package ke.co.skyworld.accessToken;
 import com.google.gson.JsonArray;
-import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.KeyManager;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Arrays;
 
 public class VerifyToken {
     public static class TokenExpiredException extends Exception {}

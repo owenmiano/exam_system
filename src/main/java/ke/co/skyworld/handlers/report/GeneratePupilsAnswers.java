@@ -9,7 +9,7 @@ import io.undertow.util.PathTemplateMatch;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -24,7 +24,7 @@ public class GeneratePupilsAnswers implements HttpHandler {
             String pupilIdString = pathMatch.getParameters().get("pupilId");
 
             if (pupilIdString == null || pupilIdString.isEmpty() || examSubjectIdString == null || examSubjectIdString.isEmpty()) {
-                Response.Message(exchange, 400, "Pupil ID and Exam Subject ID are required.");
+                Responses.Message(exchange, 400, "Pupil ID and Exam Subject ID are required.");
                 return;
             }
             try {
@@ -98,10 +98,10 @@ public class GeneratePupilsAnswers implements HttpHandler {
                 exchange.getResponseSender().send(result.toString());
 
             } catch (SQLException e) {
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         }catch (Exception e) {
-            Response.Message(exchange, 500,  e.getMessage());
+            Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
 

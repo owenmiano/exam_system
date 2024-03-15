@@ -6,7 +6,7 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.InsertQuery;
-import ke.co.skyworld.utils.Response;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 
@@ -22,28 +22,28 @@ public class CreateAnswer implements HttpHandler {
 
                     if (!answerData.has("questions_id") || answerData.get("questions_id").getAsInt() == 0) {
                         String errorMessage = "Question ID is missing.";
-                        Response.Message(exchange, 400, errorMessage);
+                        Responses.Message(exchange, 400, errorMessage);
                         return;
                     }
                     if (!answerData.has("choices_id") || answerData.get("choices_id").getAsInt() == 0) {
                         String errorMessage = "Choices ID is missing.";
-                        Response.Message(exchange, 400, errorMessage);
+                        Responses.Message(exchange, 400, errorMessage);
                         return;
                     }
                     if (!answerData.has("pupils_id") || answerData.get("pupils_id").getAsInt() == 0) {
                         String errorMessage = "Pupil ID is missing.";
-                        Response.Message(exchange, 400, errorMessage);
+                        Responses.Message(exchange, 400, errorMessage);
                         return;
                     }
 
                     String insertMessage = InsertQuery.insertData(connection, "answers", answerData);
                     if (insertMessage.startsWith("Error")) {
-                        Response.Message(exchange, 500, insertMessage);
+                        Responses.Message(exchange, 500, insertMessage);
                     } else {
-                        Response.Message(exchange, 200, insertMessage);
+                        Responses.Message(exchange, 200, insertMessage);
                     }
                 } catch (Exception e) {
-                    Response.Message(exchange, 500,  e.getMessage());
+                    Responses.Message(exchange, 500,  e.getMessage());
                 }
             });
         } finally {

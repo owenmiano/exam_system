@@ -6,11 +6,12 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.InsertQuery;
-import ke.co.skyworld.utils.Response;
-import org.mindrot.jbcrypt.BCrypt;
+import ke.co.skyworld.utils.Responses;
 
 import java.sql.Connection;
 import java.util.regex.Pattern;
+
+import static ke.co.skyworld.utils.PasswordEncryption.hashPassword;
 
 public class CreateTeacher implements HttpHandler {
     private static boolean isValidEmail(String email) {
@@ -39,13 +40,16 @@ public class CreateTeacher implements HttpHandler {
 
                 // Extract username and password for insertion into the "auth" table
                 String username = requestData.get("username").getAsString();
-                String plainPassword = requestData.get("password").getAsString();
-                String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+                String password = requestData.get("password").getAsString();
+
+                // Hash the password using SHA-256
+//                String hashedPassword = hashPassword(password);
+
 
                 // Create JsonObject for "auth" table insertion
                 JsonObject authData = new JsonObject();
                 authData.addProperty("username", username);
-                authData.addProperty("password", hashedPassword);
+                authData.addProperty("password", password);
                 authData.addProperty("role", "teacher");
 
                 // Remove username and password from the original data for insertion into the "teachers" table
@@ -54,7 +58,7 @@ public class CreateTeacher implements HttpHandler {
 
                 if (!requestData.has("teacher_name")) {
                     String errorMessage = "Teacher name is missing.";
-                    Response.Message(exchange, 400,  errorMessage);
+                    Responses.Message(exchange, 400,  errorMessage);
                     return;
                 }
 
@@ -65,22 +69,22 @@ public class CreateTeacher implements HttpHandler {
 
                 if (!isValidEmail(emailAddress)) {
                     String errorMessage = "Invalid email address.";
-                    Response.Message(exchange, 400,  errorMessage);
+                    Responses.Message(exchange, 400,  errorMessage);
                     return;
                 }
 
                 if (!isValidIDNumber(idNumber)) {
                     String errorMessage = "Invalid ID number.";
-                    Response.Message(exchange, 400,  errorMessage);
+                    Responses.Message(exchange, 400,  errorMessage);
                     return;
                 }
 
                 if (!isValidPhoneNumber(phone)) {
                     String errorMessage = "Invalid phone number.";
-                    Response.Message(exchange, 400,  errorMessage);
+                    Responses.Message(exchange, 400,  errorMessage);
                     return;
                 }
-
+                connection.setAutoCommit(false);
                 // Insert data into the "auth" table
                 String insertAuthMessage = InsertQuery.insertData(connection, "auth", authData);
                 String[] parts = insertAuthMessage.split(":");
@@ -89,7 +93,8 @@ public class CreateTeacher implements HttpHandler {
 
                 // Check if insertion into the "auth" table was successful
                 if (insertAuthResult.startsWith("Error")) {
-                    Response.Message(exchange, 500, insertAuthResult);
+                    connection.rollback();
+                    Responses.Message(exchange, 500, insertAuthResult);
                     return;
                 }
                 requestData.addProperty("auth_id", authId);
@@ -99,13 +104,16 @@ public class CreateTeacher implements HttpHandler {
 
                 // Check if insertion into the "teachers" table was successful
                 if (insertTeacherMessage.startsWith("Error")) {
-                    Response.Message(exchange, 500, insertTeacherMessage);
+                    connection.rollback();
+                    Responses.Message(exchange, 500, insertTeacherMessage);
                     return;
                 }
 
-                Response.Message(exchange, 200, "Data inserted successfully");
+                // Commit transaction
+                connection.commit();
+                Responses.Message(exchange, 200, "Data inserted successfully");
             } catch (Exception e) {
-                Response.Message(exchange, 500,  e.getMessage());
+                Responses.Message(exchange, 500,  e.getMessage());
             }
         });
     }finally {
