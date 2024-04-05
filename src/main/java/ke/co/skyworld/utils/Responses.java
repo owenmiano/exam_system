@@ -54,7 +54,7 @@ public class Responses {
                 Responses.Message(exchange, 404, errorMessage);
             } else if (jsonArrayResult.size() == 1) {
                 JsonObject jsonObjectResult = jsonArrayResult.get(0).getAsJsonObject();
-                responseJson.add("records", jsonObjectResult);
+                responseJson.add("data", jsonObjectResult);
             } else {
                 responseJson.add("data", jsonArrayResult);
             }
