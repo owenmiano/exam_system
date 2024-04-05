@@ -14,7 +14,7 @@ import java.util.Deque;
 public class UpdateQuestion implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             Deque<String> questionIdDeque = exchange.getQueryParameters().get("questionId");
             if (questionIdDeque != null && !questionIdDeque.isEmpty()) {
@@ -45,8 +45,7 @@ public class UpdateQuestion implements HttpHandler {
             Responses.Message(exchange, 500, e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

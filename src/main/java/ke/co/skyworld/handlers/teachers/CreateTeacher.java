@@ -11,8 +11,6 @@ import ke.co.skyworld.utils.Responses;
 import java.sql.Connection;
 import java.util.regex.Pattern;
 
-import static ke.co.skyworld.utils.PasswordEncryption.hashPassword;
-
 public class CreateTeacher implements HttpHandler {
     private static boolean isValidEmail(String email) {
         String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
@@ -31,7 +29,7 @@ public class CreateTeacher implements HttpHandler {
 
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
     try{
         exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
             try {
@@ -118,8 +116,7 @@ public class CreateTeacher implements HttpHandler {
         });
     }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

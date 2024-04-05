@@ -65,7 +65,9 @@ public class Routes {
         AuthenticationMiddleware authentication=new AuthenticationMiddleware();
         return Handlers.routing()
                 .post( "/login", new Dispatcher(new BlockingHandler(new LoginUser())))
-                .post( "/refresh-token", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new RefreshToken())),"admin","teacher","pupil"));
+                .post( "/refresh-token", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new RefreshToken())),"admin","teacher","pupil"))
+                .post( "/change-password", authentication.authenticateUser(new Dispatcher(new BlockingHandler(new ChangePassword())),"admin","teacher","pupil"))
+                .put( "/logout", new Dispatcher(new BlockingHandler(new LogoutUser())));
     }
 
     public static RoutingHandler Exam() {

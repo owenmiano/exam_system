@@ -14,7 +14,7 @@ import java.sql.Connection;
 public class UpdateTeacher implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             // Extracting the teacher ID from the URL path using PathTemplateMatch
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
@@ -47,8 +47,7 @@ public class UpdateTeacher implements HttpHandler {
             Responses.Message(exchange, 500, e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

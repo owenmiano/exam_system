@@ -10,7 +10,7 @@ import java.util.Deque;
 public class GetPupils implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             Deque<String> columnsDeque = exchange.getQueryParameters().get("columns");
             String[] columns = (columnsDeque != null && !columnsDeque.isEmpty()) ? columnsDeque.getFirst().split(",") : new String[]{"*"};

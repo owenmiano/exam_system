@@ -26,17 +26,17 @@ public class AuthenticationMiddleware {
                             Responses.Message(exchange, 403, "Forbidden: You don't have sufficient permissions to access this resource.");
                         }
                     } else {
-                        Responses.Message(exchange, 401, "Unauthorized");
+                        Responses.Message(exchange, 401, "Unauthorized. Please log in to access this resource");
                     }
                 } catch (VerifyToken.TokenExpiredException e) {
-                    Responses.Message(exchange, 401, "Token has expired");
+                    Responses.Message(exchange, 401, "Token has expired. Please log in to access this resource");
                 } catch (VerifyToken.InvalidTokenException e) {
-                    Responses.Message(exchange, 401, "Invalid token");
+                    Responses.Message(exchange, 401, "Invalid token. Please log in to access this resource");
                 } catch (VerifyToken.TokenVerificationException e) {
                     Responses.Message(exchange, 500, e.getMessage());
                 }
             } else {
-                Responses.Message(exchange, 401, "Unauthorized: Please log in to access this resource.");
+                Responses.Message(exchange, 401, "Unauthorized: Please log in to access this resource");
             }
         };
     }

@@ -1,6 +1,8 @@
 package ke.co.skyworld.Model;
 
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -17,7 +19,10 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 
 import ke.co.skyworld.KeyManager;
 import org.w3c.dom.Document;
@@ -25,13 +30,15 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 public class ConfigReader {
-
+    private final List<Connection> connectionPool = new ArrayList<>();
+    private final List<Connection> usedConnections = new ArrayList<>();
+    private static final int INITIAL_POOL_SIZE = 10;
     private static String dbType;
-    private String dbName;
-    private String dbHost;
-    private int dbPort;
-    private String username;
-    private String password;
+    private static String dbName;
+    private static String dbHost;
+    private static int dbPort;
+    private static String username;
+    private static String password;
     private static String serverHost;
     private static int serverPort;
 
@@ -45,11 +52,11 @@ public class ConfigReader {
     public void setServerPort(int serverPort) { this.serverPort = serverPort; }
 
     public static String getDbType() { return dbType; }
-    public String getDbName() { return dbName; }
-    public String getDbHost() { return dbHost; }
-    public int getDbPort() { return dbPort; }
-    public String getUsername() { return username; }
-    public String getPassword() { return password; }
+    public static String getDbName() { return dbName; }
+    public static String getDbHost() { return dbHost; }
+    public static int getDbPort() { return dbPort; }
+    public static String getUsername() { return username; }
+    public static String getPassword() { return password; }
     public static String getServerHost() { return serverHost; }
     public static int getServerPort() { return serverPort; }
 
@@ -106,25 +113,32 @@ public class ConfigReader {
         }
     }
 
+    public static byte[] charArrayToByteArray(char[] chars) {
+        ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(CharBuffer.wrap(chars));
+        byte[] bytes = Arrays.copyOfRange(byteBuffer.array(), byteBuffer.position(), byteBuffer.limit());
+        Arrays.fill(byteBuffer.array(), (byte) 0); // Clear sensitive data
+        return bytes;
+    }
+
     public static String encrypt(String data) {
         try {
-            Cipher cipher = Cipher.getInstance("AES");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(KeyManager.ENCRYPT_KEY, "AES");
-
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(charArrayToByteArray(KeyManager.AES_ENCRYPT_KEY), "AES");
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
             byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
 
             return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("Error while encrypting: " + e.getMessage());
             return null;
         }
     }
 
-    public static String decrypt(String encryptedData, byte[] secretKey) {
+    public static String decrypt(String encryptedData, char[] secretKey) {
         try {
-            Cipher cipher = Cipher.getInstance("AES");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "AES");
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(charArrayToByteArray(secretKey), "AES");
 
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
             byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedData));
@@ -132,9 +146,11 @@ public class ConfigReader {
             return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("Error while decrypting: " + e.getMessage());
             return null;
         }
     }
+
 
     private void saveDocumentToFile(Document doc, File file) throws Exception {
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
@@ -144,26 +160,9 @@ public class ConfigReader {
         transformer.transform(source, result);
     }
 
-    public Connection getConnection() throws SQLException {
-        String connectionUrl = buildConnectionUrl();
-        String decryptedUsername = decrypt(this.getUsername(), KeyManager.ENCRYPT_KEY);
-        String decryptedPassword = decrypt(this.getPassword(), KeyManager.ENCRYPT_KEY);
 
-        return DriverManager.getConnection(connectionUrl, decryptedUsername, decryptedPassword);
-    }
 
-    private String buildConnectionUrl() {
-        switch (this.getDbType().toLowerCase()) {
-            case "mysql":
-                return String.format("jdbc:mysql://%s:%d/%s", this.getDbHost(), this.getDbPort(), this.getDbName());
-            case "postgresql":
-                return String.format("jdbc:postgresql://%s:%d/%s", this.getDbHost(), this.getDbPort(), this.getDbName());
-            case "mssql":
-                return String.format("jdbc:sqlserver://%s:%d;databaseName=%s", this.getDbHost(), this.getDbPort(), this.getDbName());
-            default:
-                throw new IllegalArgumentException("Unsupported database type: " + this.getDbType());
-        }
-    }
+
 
     public void createTables(Connection connection) throws SQLException {
         String[] createTableCommands = getTableCreationCommands(this.getDbType());

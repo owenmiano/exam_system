@@ -16,7 +16,7 @@ public class CreateAdmin implements HttpHandler {
 
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection  connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                 try {
@@ -62,10 +62,7 @@ public class CreateAdmin implements HttpHandler {
                 }
             });
         } finally {
-            if (connection != null) {
-
-                connection.close();
-            }
+                ConnectDB.shutdown();
         }
     }
 }

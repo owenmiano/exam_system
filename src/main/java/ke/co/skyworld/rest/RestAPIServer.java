@@ -23,7 +23,7 @@ public class RestAPIServer {
             String BASE_REST_API_URL = "/api/rest";
 
             PathHandler pathHandler = Handlers.path()
-                    .addPrefixPath(BASE_REST_API_URL + "/classes", Routes.Class())
+                    .addPrefixPath(BASE_REST_API_URL + "/classes",Routes.Class())
                     .addPrefixPath(BASE_REST_API_URL + "/pupils", Routes.Pupil())
                     .addPrefixPath(BASE_REST_API_URL + "/teachers", Routes.Teacher())
                      .addPrefixPath(BASE_REST_API_URL + "/auth", Routes.Auth())

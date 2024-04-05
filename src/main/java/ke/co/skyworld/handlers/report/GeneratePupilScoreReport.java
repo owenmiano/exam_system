@@ -27,7 +27,7 @@ import java.util.*;
 public class GeneratePupilScoreReport implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String examIdString = pathMatch.getParameters().get("examId");
@@ -185,8 +185,7 @@ public class GeneratePupilScoreReport implements HttpHandler {
         }
         finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

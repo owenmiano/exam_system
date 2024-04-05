@@ -14,7 +14,7 @@ import java.sql.Connection;
 public class UpdateChoice implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String choiceIdString = pathMatch.getParameters().get("choiceId");
@@ -46,8 +46,7 @@ public class UpdateChoice implements HttpHandler {
             Responses.Message(exchange, 400, e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

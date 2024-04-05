@@ -15,7 +15,7 @@ public class UpdateToken implements HttpHandler {
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         String userName = exchange.getAttachment(RefreshToken.USER_NAME_KEY);
         String accessToken = exchange.getAttachment(RefreshToken.ACCESS_TOKEN_KEY);
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         JsonObject authData = new JsonObject();
         authData.addProperty("access_token", accessToken);
         String whereClause = "username = ?";

@@ -16,7 +16,7 @@ import java.sql.SQLException;
 public class GetExam implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
 
         try {
             // Extracting the exam ID from the URL path using PathTemplateMatch
@@ -68,7 +68,7 @@ public class GetExam implements HttpHandler {
             Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

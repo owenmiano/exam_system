@@ -18,7 +18,7 @@ import java.util.Map;
 public class GetQuestion implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             // Extracting the question ID from the URL path using PathTemplateMatch
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
@@ -101,7 +101,7 @@ public class GetQuestion implements HttpHandler {
             }
         }finally {
             if (connection != null) {
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

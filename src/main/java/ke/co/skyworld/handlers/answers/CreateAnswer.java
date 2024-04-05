@@ -13,7 +13,7 @@ import java.sql.Connection;
 public class CreateAnswer implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                 try {
@@ -47,9 +47,7 @@ public class CreateAnswer implements HttpHandler {
                 }
             });
         } finally {
-            if (connection != null) {
-                connection.close(); // Close the connection
-            }
+                ConnectDB.shutdown(); // Close the connection
         }
     }
 }

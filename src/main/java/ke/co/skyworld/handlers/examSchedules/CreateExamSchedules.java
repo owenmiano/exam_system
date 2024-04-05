@@ -13,7 +13,7 @@ import java.sql.Connection;
 public class CreateExamSchedules implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                 Gson gson = new Gson();
@@ -47,8 +47,7 @@ public class CreateExamSchedules implements HttpHandler {
             Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

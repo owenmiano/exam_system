@@ -18,7 +18,7 @@ public class GetClass implements HttpHandler {
 
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String classIdString = pathMatch.getParameters().get("classId");
@@ -61,8 +61,7 @@ public class GetClass implements HttpHandler {
             Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
 

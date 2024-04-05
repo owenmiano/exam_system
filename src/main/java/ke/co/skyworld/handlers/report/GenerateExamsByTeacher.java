@@ -15,7 +15,7 @@ import java.sql.SQLException;
 public class GenerateExamsByTeacher implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String teacherIdString = pathMatch.getParameters().get("teacherId");
@@ -59,8 +59,7 @@ public class GenerateExamsByTeacher implements HttpHandler {
             Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

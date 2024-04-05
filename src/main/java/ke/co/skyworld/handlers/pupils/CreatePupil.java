@@ -7,10 +7,8 @@ import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.InsertQuery;
 import ke.co.skyworld.utils.Responses;
-import ke.co.skyworld.utils.PasswordEncryption;
 
 import java.sql.Connection;
-import static ke.co.skyworld.utils.PasswordEncryption.hashPassword;
 
 public class CreatePupil implements HttpHandler {
     private static boolean isValidPhoneNumber(String phoneNumber) {
@@ -20,7 +18,7 @@ public class CreatePupil implements HttpHandler {
 
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-      Connection  connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             exchange.getRequestReceiver().receiveFullString((exchange1, requestBody) -> {
                 try {
@@ -93,7 +91,7 @@ public class CreatePupil implements HttpHandler {
         } finally {
         if (connection != null) {
             connection.setAutoCommit(true);
-            connection.close();
+            ConnectDB.shutdown();
         }
     }
 }

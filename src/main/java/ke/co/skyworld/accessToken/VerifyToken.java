@@ -18,16 +18,16 @@ public class VerifyToken {
     }
 
     // Modified verifyExpectedToken method
-    public static User verifyExpectedToken(String expectedToken) throws TokenExpiredException, InvalidTokenException, TokenVerificationException {
-        Connection connection = ConnectDB.initializeDatabase();
+    public static User verifyExpectedToken(String expectedToken) throws TokenExpiredException, InvalidTokenException, TokenVerificationException, SQLException {
+        Connection connection = ConnectDB.getConnection();
         User user = new User();
         try {
-            String[] columns = {"count(*)"};
+            String[] columns = {"access_token"};
             String whereClause = "access_token = ?";
             Object[] params = {expectedToken};
-            JsonArray jsonArrayResult = SelectQuery.select(connection, "auth", whereClause, params);
+            JsonArray jsonArrayResult = SelectQuery.select(connection, "auth",columns, whereClause, params);
             if (!jsonArrayResult.isEmpty()) {
-                String decryptedToken = ConfigReader.decrypt(expectedToken, KeyManager.ENCRYPT_KEY);
+                String decryptedToken = ConfigReader.decrypt(expectedToken, KeyManager.AES_ENCRYPT_KEY);
 
                 String[] fields = decryptedToken.split("_");
                 user.setUsername((fields[0]));
@@ -50,6 +50,8 @@ public class VerifyToken {
             throw new TokenVerificationException(e.getMessage());
         } catch (SQLException e) {
             throw new TokenVerificationException(e.getMessage());
+        } finally {
+                ConnectDB.releaseConnection(connection);
         }
         return user;
     }

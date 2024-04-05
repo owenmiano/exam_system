@@ -14,7 +14,7 @@ import java.sql.Connection;
 public class UpdateExamSchedule implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
 
         try {
             // Extracting the exam schedule ID from the URL path using PathTemplateMatch
@@ -48,8 +48,7 @@ public class UpdateExamSchedule implements HttpHandler {
             Responses.Message(exchange, 500, e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

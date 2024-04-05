@@ -16,7 +16,7 @@ import java.sql.SQLException;
 public class GetPupil implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             String pupilIdString = pathMatch.getParameters().get("pupilId");
 
@@ -69,8 +69,7 @@ public class GetPupil implements HttpHandler {
             }
             finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

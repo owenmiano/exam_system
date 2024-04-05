@@ -14,7 +14,7 @@ import java.sql.Connection;
 public class UpdateClass implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
 
         try {
             // Extracting the class ID from the URL path using PathTemplateMatch
@@ -55,8 +55,7 @@ public class UpdateClass implements HttpHandler {
 
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }

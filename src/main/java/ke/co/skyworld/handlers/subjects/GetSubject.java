@@ -17,7 +17,7 @@ import java.util.Deque;
 public class GetSubject implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        Connection connection = ConnectDB.initializeDatabase();
+        Connection connection = ConnectDB.getConnection();
         try {
             // Extracting the columns parameter from the query string
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
@@ -43,7 +43,7 @@ public class GetSubject implements HttpHandler {
                         JsonArray jsonArrayResult = SelectQuery.select(connection, "subject", finalColumns, whereClause, subjectId);
                         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
 
-                        if (jsonArrayResult.size() == 0) {
+                        if (jsonArrayResult.isEmpty()) {
                             String errorMessage = "Subject not found";
                             Responses.Message(exchange, 404, errorMessage);
                         } else if (jsonArrayResult.size() == 1) {
@@ -63,8 +63,7 @@ public class GetSubject implements HttpHandler {
             Responses.Message(exchange, 500,  e.getMessage());
         }finally {
             if (connection != null) {
-
-                connection.close();
+                ConnectDB.shutdown();
             }
         }
     }
