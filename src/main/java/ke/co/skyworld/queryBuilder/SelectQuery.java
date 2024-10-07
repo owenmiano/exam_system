@@ -5,8 +5,8 @@ import com.google.gson.*;
 import java.lang.reflect.Type;
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.StringJoiner;
 import java.time.format.DateTimeFormatter;
+import java.util.StringJoiner;
 
 public class SelectQuery {
     private static final Gson gson = new GsonBuilder()
@@ -25,6 +25,7 @@ public class SelectQuery {
             for (Object param : params) {
                 pstmt.setObject(index++, param);
             }
+            System.out.println(pstmt);
             try (ResultSet rs = pstmt.executeQuery()) {
                 ResultSetMetaData metaData = rs.getMetaData();
                 int columnCount = metaData.getColumnCount();

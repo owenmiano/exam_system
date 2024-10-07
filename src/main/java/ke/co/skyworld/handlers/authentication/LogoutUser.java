@@ -1,12 +1,10 @@
 package ke.co.skyworld.handlers.authentication;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import ke.co.skyworld.accessToken.GenerateToken;
 import ke.co.skyworld.db.ConnectDB;
-import ke.co.skyworld.queryBuilder.SelectQuery;
 import ke.co.skyworld.queryBuilder.UpdateQuery;
 import ke.co.skyworld.utils.Responses;
 

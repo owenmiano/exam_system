@@ -14,9 +14,8 @@ import ke.co.skyworld.db.ConnectDB;
 import ke.co.skyworld.queryBuilder.SelectQuery;
 import ke.co.skyworld.queryBuilder.UpdateQuery;
 import ke.co.skyworld.utils.Responses;
-import java.sql.Connection;
 
-import static ke.co.skyworld.utils.PasswordEncryption.hashPassword;
+import java.sql.Connection;
 
 public class LoginUser implements HttpHandler {
     @Override
@@ -68,7 +67,7 @@ public class LoginUser implements HttpHandler {
                             } else {
                                 // Update login attempts count
                                 updateLoginAttempts(connection, username, loginAttempts);
-                                String errorMessage = "Incorrect password. Please try again.";
+                                String errorMessage = "Incorrect username or password.";
                                 Responses.Message(exchange, 401, errorMessage);
                             }
                             return;
@@ -104,7 +103,7 @@ public class LoginUser implements HttpHandler {
                         exchange.getResponseSender().send(responseJson.toString());
                     } else {
                         // User not found
-                        String errorMessage = "Invalid username or password.";
+                        String errorMessage = "Incorrect username or password.";
                         Responses.Message(exchange, 401, errorMessage);
                     }
                 } catch (Exception e) {

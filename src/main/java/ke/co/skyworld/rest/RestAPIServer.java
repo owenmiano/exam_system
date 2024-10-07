@@ -6,8 +6,8 @@ import io.undertow.UndertowOptions;
 import io.undertow.server.handlers.PathHandler;
 import ke.co.skyworld.Model.ConfigReader;
 import ke.co.skyworld.rest.base.CORSHandler;
-import ke.co.skyworld.rest.base.Dispatcher;
 import ke.co.skyworld.utils.ConfigFileChecker;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 
@@ -17,8 +17,8 @@ public class RestAPIServer {
             File configFile = ConfigFileChecker.getConfigFile();
             ConfigReader config = new ConfigReader(configFile);
 
-            String HOST = config.getServerHost();
-            int PORT = config.getServerPort();
+            String HOST = ConfigReader.getServerHost();
+            int PORT = ConfigReader.getServerPort();
 
             String BASE_REST_API_URL = "/api/rest";
 

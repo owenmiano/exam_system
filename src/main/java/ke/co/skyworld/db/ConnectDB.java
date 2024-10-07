@@ -3,12 +3,12 @@ package ke.co.skyworld.db;
 
 import ke.co.skyworld.KeyManager;
 import ke.co.skyworld.Model.ConfigReader;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 
 import static ke.co.skyworld.Model.ConfigReader.decrypt;
 
