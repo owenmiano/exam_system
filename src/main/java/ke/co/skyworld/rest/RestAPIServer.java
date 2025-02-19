@@ -23,23 +23,23 @@ public class RestAPIServer {
             String BASE_REST_API_URL = "/api/rest";
 
             PathHandler pathHandler = Handlers.path()
-                    .addPrefixPath(BASE_REST_API_URL + "/classes",Routes.Class())
-                    .addPrefixPath(BASE_REST_API_URL + "/pupils", Routes.Pupil())
-                    .addPrefixPath(BASE_REST_API_URL + "/teachers", Routes.Teacher())
-                     .addPrefixPath(BASE_REST_API_URL + "/auth", Routes.Auth())
-                    .addPrefixPath(BASE_REST_API_URL + "/subjects", Routes.Subject())
-                    .addPrefixPath(BASE_REST_API_URL + "/exams", Routes.Exam())
-                    .addPrefixPath(BASE_REST_API_URL + "/exam-schedules", Routes.ExamSchedule())
-                    .addPrefixPath(BASE_REST_API_URL + "/questions", Routes.Question())
-                    .addPrefixPath(BASE_REST_API_URL + "/choices", Routes.Choice())
-                    .addPrefixPath(BASE_REST_API_URL + "/answers", Routes.Answers())
-                    .addPrefixPath(BASE_REST_API_URL + "/admins", Routes.Admin())
-                    .addPrefixPath(BASE_REST_API_URL + "/reports", Routes.Report());
+                .addPrefixPath(BASE_REST_API_URL + "/classes",Routes.Class())
+                .addPrefixPath(BASE_REST_API_URL + "/pupils", Routes.Pupil())
+                .addPrefixPath(BASE_REST_API_URL + "/teachers", Routes.Teacher())
+                .addPrefixPath(BASE_REST_API_URL + "/auth", Routes.Auth())
+                .addPrefixPath(BASE_REST_API_URL + "/subjects", Routes.Subject())
+                .addPrefixPath(BASE_REST_API_URL + "/exams", Routes.Exam())
+                .addPrefixPath(BASE_REST_API_URL + "/exam-schedules", Routes.ExamSchedule())
+                .addPrefixPath(BASE_REST_API_URL + "/questions", Routes.Question())
+                .addPrefixPath(BASE_REST_API_URL + "/choices", Routes.Choice())
+                .addPrefixPath(BASE_REST_API_URL + "/answers", Routes.Answers())
+                .addPrefixPath(BASE_REST_API_URL + "/admins", Routes.Admin())
+                .addPrefixPath(BASE_REST_API_URL + "/reports", Routes.Report());
 
-            Undertow server = Undertow.builder()
+                 Undertow server = Undertow.builder()
                     .setServerOption(UndertowOptions.DECODE_URL, true)
                     .setServerOption(UndertowOptions.URL_CHARSET, StandardCharsets.UTF_8.name())
-//                    .setIoThreads(10) //TODO: put in config
+    //                    .setIoThreads(10) //TODO: put in config
                     //.setWorkerThreads(100) //TODO: put in config
                     .addHttpListener(PORT, HOST)
                     .setHandler(new CORSHandler(pathHandler))
